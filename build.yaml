@@ -1,0 +1,14 @@
+﻿targets:
+  $default:
+    sources:
+      - lib/**
+
+    builders:
+      json_serializable:json_serializable:
+        generate_for:
+          - lib/**.dart
+
+      freezed:
+        options: {}
+        generate_for:
+          - lib/**.dart

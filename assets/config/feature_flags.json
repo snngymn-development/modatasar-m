@@ -1,0 +1,12 @@
+{
+  "new_ui": false,
+  "dark_mode": true,
+  "analytics_enabled": true,
+  "crash_reporting": true,
+  "offline_mode": false,
+  "beta_features": false,
+  "push_notifications": true,
+  "deep_linking": true,
+  "biometric_auth": false,
+  "social_login": false
+}
