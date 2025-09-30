@@ -39,6 +39,22 @@ class SalesPage extends ConsumerWidget {
           ),
           IconButton(
             onPressed: () {
+              TalkerConfig.logUserAction('Open performance dashboard');
+              context.go('/performance');
+            },
+            icon: const Icon(Icons.analytics),
+            tooltip: 'Performance Dashboard',
+          ),
+          IconButton(
+            onPressed: () {
+              TalkerConfig.logUserAction('Open AI dashboard');
+              context.go('/ai');
+            },
+            icon: const Icon(Icons.psychology),
+            tooltip: 'AI Dashboard',
+          ),
+          IconButton(
+            onPressed: () {
               TalkerConfig.logUserAction('Open logs screen');
               final talker = ref.read(talkerProvider);
               Navigator.of(context).push(
@@ -108,12 +124,7 @@ class SalesPage extends ConsumerWidget {
                     Colors.green,
                     () {
                       TalkerConfig.logUserAction('Navigate to Customers');
-                      // TODO: Navigate to customers when created
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Müşteriler modülü yakında!'),
-                        ),
-                      );
+                      context.go('/customers');
                     },
                   ),
                   _buildModuleCard(
@@ -123,10 +134,7 @@ class SalesPage extends ConsumerWidget {
                     Colors.orange,
                     () {
                       TalkerConfig.logUserAction('Navigate to Cart');
-                      // TODO: Navigate to cart when created
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Sepet modülü yakında!')),
-                      );
+                      context.go('/cart');
                     },
                   ),
                   _buildModuleCard(
@@ -152,6 +160,16 @@ class SalesPage extends ConsumerWidget {
                           content: Text('Ödemeler modülü yakında!'),
                         ),
                       );
+                    },
+                  ),
+                  _buildModuleCard(
+                    context,
+                    'Raporlar',
+                    Icons.assessment,
+                    Colors.indigo,
+                    () {
+                      TalkerConfig.logUserAction('Navigate to Reports');
+                      context.go('/reports');
                     },
                   ),
                   _buildModuleCard(

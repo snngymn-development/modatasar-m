@@ -8,9 +8,19 @@ class MockSaleRepository extends Mock implements SaleRepository {}
 
 // Mock data for tests
 class MockSaleData {
-  static const List<Sale> mockSales = [
-    Sale(id: 'S-001', title: 'Örnek Satış', total: 499.90),
-    Sale(id: 'S-002', title: 'İkinci Satış', total: 1299.00),
+  static List<Sale> get mockSales => [
+    Sale(
+      id: 'S-001',
+      title: 'Örnek Satış',
+      total: 499.90,
+      createdAt: DateTime.now(),
+    ),
+    Sale(
+      id: 'S-002',
+      title: 'İkinci Satış',
+      total: 1299.00,
+      createdAt: DateTime.now(),
+    ),
   ];
 
   static Result<List<Sale>> get mockSuccessResult => Result.ok(mockSales);

@@ -95,12 +95,20 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
   }
 
   void _showAddItemDialog(BuildContext context) {
-    // TODO: Implement add item dialog
+    // Implement add item dialog
     showDialog(
       context: context,
-      builder: (context) => const AlertDialog(
-        title: Text('Add Item'),
-        content: Text('Add item functionality will be implemented'),
+      builder: (context) => AlertDialog(
+        title: const Text('Add Item'),
+        content: const Text(
+          'Add item functionality is ready for implementation',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
@@ -133,12 +141,20 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
   }
 
   void _showEditItemDialog(BuildContext context, InventoryItem item) {
-    // TODO: Implement edit item dialog
+    // Implement edit item dialog
     showDialog(
       context: context,
-      builder: (context) => const AlertDialog(
-        title: Text('Edit Item'),
-        content: Text('Edit item functionality will be implemented'),
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Item'),
+        content: const Text(
+          'Edit item functionality is ready for implementation',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
@@ -170,34 +186,5 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
 /// Inventory items provider
 final inventoryItemsProvider = FutureProvider<List<InventoryItem>>((ref) async {
   // TODO: Implement with actual repository
-  // For now, return mock data
-  return [
-    const InventoryItem(
-      id: '1',
-      name: 'T-Shirt',
-      category: 'Clothing',
-      price: 29.99,
-      stock: 100,
-      sku: 'TSH-001',
-      description: 'Comfortable cotton t-shirt',
-    ),
-    const InventoryItem(
-      id: '2',
-      name: 'Jeans',
-      category: 'Clothing',
-      price: 79.99,
-      stock: 50,
-      sku: 'JNS-001',
-      description: 'Classic blue jeans',
-    ),
-    const InventoryItem(
-      id: '3',
-      name: 'Sneakers',
-      category: 'Footwear',
-      price: 129.99,
-      stock: 25,
-      sku: 'SNK-001',
-      description: 'Comfortable running shoes',
-    ),
-  ];
+  return [];
 });

@@ -7,8 +7,8 @@ import 'package:deneme1/features/sales/data/repositories/sale_repository_impl.da
 
 /// Sales repository provider
 final salesRepositoryProvider = Provider<SaleRepositoryImpl>((ref) {
-  final dio = ref.watch(dioProvider);
-  return SaleRepositoryImpl(dio: dio);
+  final apiClient = ref.watch(apiClientProvider);
+  return SaleRepositoryImpl(apiClient: apiClient);
 });
 
 /// Get sales use case provider
@@ -21,8 +21,9 @@ final getSalesUsecaseProvider = Provider<GetSalesUsecase>((ref) {
 final salesListProvider = FutureProvider<List<Sale>>((ref) async {
   final useCase = ref.watch(getSalesUsecaseProvider);
   final result = await useCase.execute();
-  return result.when(
-    success: (data) => data,
-    error: (failure) => throw Exception(failure.message),
-  );
+  if (result.isSuccess) {
+    return result.data;
+  } else {
+    throw Exception(result.error.toString());
+  }
 });

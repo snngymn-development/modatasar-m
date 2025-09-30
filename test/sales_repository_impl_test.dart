@@ -23,6 +23,7 @@ class TestSaleRepositoryImpl {
               id: e['id'] as String,
               title: e['title'] as String,
               total: (e['total'] as num).toDouble(),
+              createdAt: DateTime.now(),
             ),
           )
           .toList();

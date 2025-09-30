@@ -24,6 +24,6 @@ class AppErrorReporter {
       capture(error, stack);
       return true;
     };
-    runZonedGuarded(runAppCallback, (e, s) => capture(e, s));
+    runAppCallback();
   }
 }

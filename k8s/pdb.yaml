@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: enterprise-flutter-pdb
+  namespace: enterprise-flutter
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: enterprise-flutter-app

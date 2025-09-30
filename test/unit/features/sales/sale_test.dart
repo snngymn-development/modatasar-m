@@ -10,7 +10,12 @@ void main() {
       const total = 100.0;
 
       // Act
-      const sale = Sale(id: id, title: title, total: total);
+      final sale = Sale(
+        id: id,
+        title: title,
+        total: total,
+        createdAt: DateTime.now(),
+      );
 
       // Assert
       expect(sale.id, equals(id));
@@ -20,9 +25,25 @@ void main() {
 
     test('should support equality comparison', () {
       // Arrange
-      const sale1 = Sale(id: 'S-001', title: 'Test Sale', total: 100.0);
-      const sale2 = Sale(id: 'S-001', title: 'Test Sale', total: 100.0);
-      const sale3 = Sale(id: 'S-002', title: 'Test Sale', total: 100.0);
+      final now = DateTime.now();
+      final sale1 = Sale(
+        id: 'S-001',
+        title: 'Test Sale',
+        total: 100.0,
+        createdAt: now,
+      );
+      final sale2 = Sale(
+        id: 'S-001',
+        title: 'Test Sale',
+        total: 100.0,
+        createdAt: now,
+      );
+      final sale3 = Sale(
+        id: 'S-002',
+        title: 'Test Sale',
+        total: 100.0,
+        createdAt: now,
+      );
 
       // Act & Assert
       expect(sale1, equals(sale2));
@@ -31,9 +52,25 @@ void main() {
 
     test('should support hashCode', () {
       // Arrange
-      const sale1 = Sale(id: 'S-001', title: 'Test Sale', total: 100.0);
-      const sale2 = Sale(id: 'S-001', title: 'Test Sale', total: 100.0);
-      const sale3 = Sale(id: 'S-002', title: 'Test Sale', total: 100.0);
+      final now = DateTime.now();
+      final sale1 = Sale(
+        id: 'S-001',
+        title: 'Test Sale',
+        total: 100.0,
+        createdAt: now,
+      );
+      final sale2 = Sale(
+        id: 'S-001',
+        title: 'Test Sale',
+        total: 100.0,
+        createdAt: now,
+      );
+      final sale3 = Sale(
+        id: 'S-002',
+        title: 'Test Sale',
+        total: 100.0,
+        createdAt: now,
+      );
 
       // Act & Assert
       expect(sale1.hashCode, equals(sale2.hashCode));
@@ -42,7 +79,12 @@ void main() {
 
     test('should support toString', () {
       // Arrange
-      const sale = Sale(id: 'S-001', title: 'Test Sale', total: 100.0);
+      final sale = Sale(
+        id: 'S-001',
+        title: 'Test Sale',
+        total: 100.0,
+        createdAt: DateTime.now(),
+      );
 
       // Act
       final stringRepresentation = sale.toString();
@@ -55,7 +97,12 @@ void main() {
 
     test('should be immutable', () {
       // Arrange
-      const sale = Sale(id: 'S-001', title: 'Test Sale', total: 100.0);
+      final sale = Sale(
+        id: 'S-001',
+        title: 'Test Sale',
+        total: 100.0,
+        createdAt: DateTime.now(),
+      );
 
       // Act & Assert
       expect(sale.id, isA<String>());

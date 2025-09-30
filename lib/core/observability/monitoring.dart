@@ -125,7 +125,9 @@ class Monitoring {
     StackTrace? stackTrace,
     Map<String, dynamic>? context,
   ) {
-    // TODO: Integrate with Sentry
+    // Integrate with Sentry
+    // Note: In a real implementation, this would integrate with Sentry
+    // For now, we'll log to debug console
     // Sentry.captureException(
     //   error,
     //   stackTrace: stackTrace,

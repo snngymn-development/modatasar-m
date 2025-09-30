@@ -24,11 +24,18 @@ class AppTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: brightness,
+      // Enhanced color customization
+      primary: primarySeed,
+      secondary: secondarySeed,
+      tertiary: tertiarySeed,
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      // Enhanced Material 3 features
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+      splashFactory: InkRipple.splashFactory,
 
       // App Bar Theme
       appBarTheme: AppBarTheme(

@@ -61,4 +61,9 @@ class TalkerConfig {
   static void logBusiness(String message) {
     instance.info('💼 BUSINESS: $message');
   }
+
+  // Performance logging
+  static void logPerformance(String operation, Duration duration) {
+    instance.info('⚡ PERFORMANCE: $operation (${duration.inMilliseconds}ms)');
+  }
 }

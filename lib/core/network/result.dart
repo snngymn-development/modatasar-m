@@ -22,6 +22,16 @@ extension ResultExtension<T> on Result<T> {
   bool get isSuccess => this is Success<T>;
   bool get isFailure => this is Error<T>;
 
+  T get data => switch (this) {
+    Success<T>(data: final data) => data,
+    Error<T>() => throw StateError('Cannot access data on Error result'),
+  };
+
+  core.Failure get error => switch (this) {
+    Success<T>() => throw StateError('Cannot access error on Success result'),
+    Error<T>(failure: final failure) => failure,
+  };
+
   T? get dataOrNull => switch (this) {
     Success<T>(data: final data) => data,
     Error<T>() => null,
