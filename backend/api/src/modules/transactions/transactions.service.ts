@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../common/prisma.service'
 import { FindTransactionsDto } from './dto'
+import type { Order, Customer, Rental } from '@prisma/client'
 
 @Injectable()
 export class TransactionsService {
@@ -28,7 +29,7 @@ export class TransactionsService {
     })
 
     // Map to response DTO
-    const items = orders.map((o) => ({
+    const items = orders.map((o: Order & { rental: Rental | null; customer: Customer }) => ({
       id: o.id,
       type: o.type,
       createdAt: o.createdAt.toISOString(),

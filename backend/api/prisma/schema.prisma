@@ -7,125 +7,105 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================
-// CORE MODELS
-// ============================================
-
 model Customer {
-  id              String    @id @default(cuid())
-  name            String
-  phone           String?
-  email           String?
-  city            String?
-  isProtocol      Boolean   @default(false)
-  stars           Int       @default(0) // 0..3
-  priority        String    @default("NORMAL") // LOW|NORMAL|HIGH
-  tags            String    @default("") // Comma-separated tags
-  status          String    @default("ACTIVE") // ACTIVE|PASSIVE
-  lastActivityAt  DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  orders          Order[]
+  id             String    @id @default(cuid())
+  name           String
+  phone          String?
+  email          String?
+  city           String?
+  isProtocol     Boolean   @default(false)
+  stars          Int       @default(0)
+  priority       String    @default("NORMAL")
+  tags           String    @default("")
+  status         String    @default("ACTIVE")
+  lastActivityAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  orders         Order[]
 }
 
 model Supplier {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String?
-  email     String?
-  city      String?
-  category  String?  // FABRIC|ACCESSORY|CLEANING|ALTERATION
-  status    String   @default("ACTIVE") // ACTIVE|PASSIVE
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  purchases Purchase[]
+  id         String      @id @default(cuid())
+  name       String
+  phone      String?
+  email      String?
+  city       String?
+  category   String?
+  status     String      @default("ACTIVE")
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  purchases  Purchase[]
   stockCards StockCard[]
 }
 
 model Product {
-  id        String   @id @default(cuid())
-  name      String
-  model     String?
-  color     String?
-  size      String?
-  category  String?
-  tags      String   @default("")  // Comma-separated tags
-  status    String   @default("AVAILABLE")  // AVAILABLE | IN_USE | MAINTENANCE | OUT_OF_SERVICE
-  createdAt DateTime @default(now())
-  purchaseItems PurchaseItem[]
-  receiptLines  GoodsReceiptLine[]
+  id             String             @id @default(cuid())
+  name           String
+  model          String?
+  color          String?
+  size           String?
+  category       String?
+  tags           String             @default("")
+  status         String             @default("AVAILABLE")
+  createdAt      DateTime           @default(now())
+  receiptLines   GoodsReceiptLine[]
+  purchaseItems  PurchaseItem[]
   stockMovements StockMovement[]
 }
 
 model Order {
   id           String    @id @default(cuid())
-  type         String    // TAILORING | RENTAL
+  type         String
   customerId   String
-  customer     Customer  @relation(fields: [customerId], references: [id])
   organization String?
   deliveryDate DateTime?
-  total        Int       // Amount in cents
-  collected    Int       // Amount collected in cents
-  status       String    // ACTIVE | COMPLETED | CANCELLED
-  stage        String?   // CREATED | IN_PROGRESS_50 | IN_PROGRESS_80 | READY | DELIVERED (Tailoring) | BOOKED | PICKED_UP | RETURNED (Rental)
+  total        Int
+  collected    Int
+  status       String
+  stage        String?
   createdAt    DateTime  @default(now())
+  customer     Customer  @relation(fields: [customerId], references: [id])
   rental       Rental?
 }
 
 model Rental {
   id           String   @id @default(cuid())
   orderId      String   @unique
-  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId    String
   start        DateTime
   end          DateTime
   organization String?
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
-
-// ============================================
-// AGENDA (Non-rental events)
-// ============================================
 
 model AgendaEvent {
   id        String   @id @default(cuid())
   productId String
-  type      String   // 'DRY_CLEANING' | 'ALTERATION' | 'OUT_OF_SERVICE'
+  type      String
   start     DateTime
   end       DateTime
   note      String?
   createdAt DateTime @default(now())
 }
 
-// ============================================
-// CALENDAR EVENTS (Unified calendar system)
-// ============================================
-
 model CalendarEvent {
-  id          String   @id @default(cuid())
-  type        String   // APPOINTMENT | FITTING | ORDER_DELIVERY | RENTAL | RECEIVABLE | PAYABLE | TODO
+  id          String    @id @default(cuid())
+  type        String
   title       String
   start       DateTime
   end         DateTime?
   emoji       String
-  status      String   @default("PLANNED") // PLANNED | DONE | CANCELLED
-  
-  // Relations
+  status      String    @default("PLANNED")
   customerId  String?
   assigneeId  String?
   resourceId  String?
-  
-  // Source reference (for automatic events)
   sourceTable String?
   sourceId    String?
-  
-  // Type-specific data (JSON)
-  payload     String?  // JSON string
-  
-  // Metadata
+  payload     String?
   createdBy   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
   @@index([type, start])
   @@index([assigneeId, start])
   @@index([customerId, start])
@@ -133,233 +113,173 @@ model CalendarEvent {
   @@index([start, end])
 }
 
-// ============================================
-// PURCHASE MODELS
-// ============================================
-
-// ==== Enums (SQLite doesn't support enums, using String) ====
-// PurchaseStatus: DRAFT | ORDERED | PARTIAL_RECEIVED | RECEIVED | CLOSED | CANCELLED
-// PaymentStatus: UNPAID | PARTIAL | PAID  
-// PurchaseType: EXPENSE | STOCK | INVENTORY
-// MovementType: IN | OUT
-
-// ==== Purchase Head ====
 model Purchase {
-  id          String         @id @default(cuid())
-  code        String?        @unique
-  date        DateTime       @default(now())
-  supplierId  String
-  supplier    Supplier       @relation(fields: [supplierId], references: [id])
-  type        String         // EXPENSE | STOCK | INVENTORY
-  status      String         @default("DRAFT") // DRAFT | ORDERED | PARTIAL_RECEIVED | RECEIVED | CLOSED | CANCELLED
-  paymentStatus String       @default("UNPAID") // UNPAID | PARTIAL | PAID
-
-  // Money (cents)
-  subTotal    Int            @default(0)
-  discountTot Int            @default(0)
-  chargeTot   Int            @default(0)
-  vatRate     Float          @default(0.20)      // ENV ile de okunacak
-  vatTot      Int            @default(0)
-  roundingAdj Int            @default(0)         // ±1 kuruş
-  total       Int            @default(0)
-  paid        Int            @default(0)
-
-  // Relations
-  items       PurchaseItem[]
+  id              String             @id @default(cuid())
+  code            String?            @unique
+  date            DateTime           @default(now())
+  supplierId      String
+  type            String
+  status          String             @default("DRAFT")
+  paymentStatus   String             @default("UNPAID")
+  subTotal        Int                @default(0)
+  discountTot     Int                @default(0)
+  chargeTot       Int                @default(0)
+  vatRate         Float              @default(0.20)
+  vatTot          Int                @default(0)
+  roundingAdj     Int                @default(0)
+  total           Int                @default(0)
+  paid            Int                @default(0)
+  note            String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  receipts        GoodsReceipt[]
+  supplier        Supplier           @relation(fields: [supplierId], references: [id])
   headerCharges   PurchaseCharge[]
   headerDiscounts PurchaseDiscount[]
-  receipts    GoodsReceipt[]
-
-  // Meta
-  note        String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  items           PurchaseItem[]
 
   @@index([supplierId, date, status])
 }
 
-// ==== Items ====
 model PurchaseItem {
-  id          String   @id @default(cuid())
-  purchaseId  String
-  purchase    Purchase @relation(fields: [purchaseId], references: [id])
-
-  // ilişkili ürün/kalem (opsiyonel – gider satırı ürünsüz olabilir)
-  productId   String?
-  product     Product? @relation(fields: [productId], references: [id])
-
-  description String?
-  qtyOrdered  Int      // adet/metre (birim UI'da)
-  qtyReceived Int      @default(0)
-  unitPrice   Int      // cents
-
-  // Line-level adjustments
-  lineDiscountTot Int @default(0)
-  lineChargeTot   Int @default(0)
-
-  // Cache alanları (hesap sonrası)
-  lineSubTotal Int @default(0)
-  lineVat      Int @default(0)
-  lineTotal    Int @default(0)
-
-  // Relations
-  receiptLines GoodsReceiptLine[]
+  id              String             @id @default(cuid())
+  purchaseId      String
+  productId       String?
+  description     String?
+  qtyOrdered      Int
+  qtyReceived     Int                @default(0)
+  unitPrice       Int
+  lineDiscountTot Int                @default(0)
+  lineChargeTot   Int                @default(0)
+  lineSubTotal    Int                @default(0)
+  lineVat         Int                @default(0)
+  lineTotal       Int                @default(0)
+  receiptLines    GoodsReceiptLine[]
+  product         Product?           @relation(fields: [productId], references: [id])
+  purchase        Purchase           @relation(fields: [purchaseId], references: [id])
 
   @@index([purchaseId])
 }
 
-// ==== Header level charges/discounts (dağıtılır) ====
 model PurchaseCharge {
-  id          String   @id @default(cuid())
-  purchaseId  String
-  purchase    Purchase @relation(fields: [purchaseId], references: [id])
-  label       String
-  amount      Int      // cents (pozitif)
-  scope       String   @default("HEADER") // geleceğe dönük
+  id         String   @id @default(cuid())
+  purchaseId String
+  label      String
+  amount     Int
+  scope      String   @default("HEADER")
+  purchase   Purchase @relation(fields: [purchaseId], references: [id])
 }
 
 model PurchaseDiscount {
-  id          String   @id @default(cuid())
-  purchaseId  String
-  purchase    Purchase @relation(fields: [purchaseId], references: [id])
-  label       String
-  amount      Int      // cents (pozitif)
-  scope       String   @default("HEADER")
+  id         String   @id @default(cuid())
+  purchaseId String
+  label      String
+  amount     Int
+  scope      String   @default("HEADER")
+  purchase   Purchase @relation(fields: [purchaseId], references: [id])
 }
 
-// ==== Goods Receipt (parçalı kabul) ====
 model GoodsReceipt {
-  id          String   @id @default(cuid())
-  purchaseId  String
-  purchase    Purchase @relation(fields: [purchaseId], references: [id])
-  date        DateTime @default(now())
-  warehouse   String   @default("MAIN")
+  id         String             @id @default(cuid())
+  purchaseId String
+  date       DateTime           @default(now())
+  warehouse  String             @default("MAIN")
+  createdAt  DateTime           @default(now())
+  purchase   Purchase           @relation(fields: [purchaseId], references: [id])
+  lines      GoodsReceiptLine[]
 
-  lines       GoodsReceiptLine[]
-
-  createdAt   DateTime @default(now())
   @@index([purchaseId, date])
 }
 
 model GoodsReceiptLine {
-  id          String        @id @default(cuid())
-  receiptId   String
-  receipt     GoodsReceipt  @relation(fields: [receiptId], references: [id])
-  itemId      String
-  item        PurchaseItem  @relation(fields: [itemId], references: [id])
-
-  productId   String?
-  product     Product?      @relation(fields: [productId], references: [id])
-
-  qty         Int           // bu kabul
-  lotCode     String?
-  note        String?
-
-  stockMove   StockMovement?
+  id        String         @id @default(cuid())
+  receiptId String
+  itemId    String
+  productId String?
+  qty       Int
+  lotCode   String?
+  note      String?
+  product   Product?       @relation(fields: [productId], references: [id])
+  item      PurchaseItem   @relation(fields: [itemId], references: [id])
+  receipt   GoodsReceipt   @relation(fields: [receiptId], references: [id])
+  stockMove StockMovement?
 
   @@index([itemId])
 }
 
-// ==== Stock Card (stok kartları) ====
 model StockCard {
-  id          String   @id @default(cuid())
-  code        String   @unique  // Kart kodu
-  name        String            // Kart adı
-  description String?           // Açıklama
-  
-  // Kategori bilgileri
-  category    String?           // Ana kategori
-  type        String?           // Tip
-  kind        String?           // Cins
-  group       String?           // Tür
-  
-  // Stok bilgileri
-  unit        String   @default("adet")  // Birim (adet, metre, kg, vb.)
-  criticalQty Int      @default(0)       // Kritik eşik
-  location    String   @default("MAIN")  // Depo/lokasyon
-  
-  // İlişkiler
+  id          String          @id @default(cuid())
+  code        String          @unique
+  name        String
+  description String?
+  category    String?
+  type        String?
+  kind        String?
+  group       String?
+  unit        String          @default("adet")
+  criticalQty Int             @default(0)
+  location    String          @default("MAIN")
   supplierId  String?
-  supplier    Supplier? @relation(fields: [supplierId], references: [id])
-  
-  // Meta
-  tags        String   @default("")      // Comma-separated tags
-  status      String   @default("ACTIVE") // ACTIVE | PASSIVE
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
+  tags        String          @default("")
+  status      String          @default("ACTIVE")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  supplier    Supplier?       @relation(fields: [supplierId], references: [id])
   movements   StockMovement[]
-  
+
   @@index([supplierId, category, status])
 }
 
-// ==== Stock Movement (opsiyonel ama önerilir) ====
 model StockMovement {
-  id          String       @id @default(cuid())
-  type        String         // IN | OUT | ADJUST
-  productId   String?
-  product     Product?     @relation(fields: [productId], references: [id])
-  
-  stockCardId String?
-  stockCard   StockCard?   @relation(fields: [stockCardId], references: [id])
+  id            String            @id @default(cuid())
+  type          String
+  productId     String?
+  stockCardId   String?
+  receiptLineId String?           @unique
+  qty           Int
+  unit          String            @default("adet")
+  warehouse     String            @default("MAIN")
+  date          DateTime          @default(now())
+  note          String?
+  referenceType String?
+  referenceId   String?
+  createdBy     String?
+  receiptLine   GoodsReceiptLine? @relation(fields: [receiptLineId], references: [id])
+  stockCard     StockCard?        @relation(fields: [stockCardId], references: [id])
+  product       Product?          @relation(fields: [productId], references: [id])
 
-  receiptLineId String?    @unique
-  receiptLine    GoodsReceiptLine? @relation(fields: [receiptLineId], references: [id])
-
-  qty         Int
-  unit        String       @default("adet")
-  warehouse   String       @default("MAIN")
-  date        DateTime     @default(now())
-  note        String?
-  
-  // Audit fields
-  referenceType String?    // TAILORING | RENTAL | ORDER | OTHER
-  referenceId   String?    // Referans ID
-  createdBy     String?    // User ID
-  
   @@index([productId, date])
   @@index([stockCardId, date])
 }
 
-// ============================================
-// FINANCE MODELS
-// ============================================
-
-// ==== Account (Hesap) ====
 model Account {
-  id        String   @id @default(cuid())
-  type      String   // CASH | BANK | POS
+  id        String    @id @default(cuid())
+  type      String
   name      String
-  currency  String   @default("TRY") // TRY | USD | EUR
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
+  currency  String    @default("TRY")
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   postings  Posting[]
 
   @@unique([name, type])
   @@index([type, isActive])
 }
 
-// ==== Transaction (İşlem) ====
 model Transaction {
-  id          String   @id @default(cuid())
-  date        DateTime @default(now())
-  kind        String   // RECEIVABLE | PAYABLE | INTERNAL_TRANSFER
-  amount      Int      // Main transaction amount in cents
-  currency    String   @default("TRY") // TRY | USD | EUR
-  rateToTRY   Float    @default(1.0) // Exchange rate to TRY
-  note        String?
-  customerId  String?
-  supplierId  String?
-  createdBy   String   // User ID who created the transaction
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  postings    Posting[]
+  id         String    @id @default(cuid())
+  date       DateTime  @default(now())
+  kind       String
+  amount     Int
+  currency   String    @default("TRY")
+  rateToTRY  Float     @default(1.0)
+  note       String?
+  customerId String?
+  supplierId String?
+  createdBy  String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  postings   Posting[]
 
   @@index([date, kind])
   @@index([customerId])
@@ -367,241 +287,158 @@ model Transaction {
   @@index([createdBy])
 }
 
-// ==== Posting (Kayıt Satırı) ====
 model Posting {
   id            String      @id @default(cuid())
   transactionId String
-  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   accountId     String
-  account       Account     @relation(fields: [accountId], references: [id])
-  dc            String      // DEBIT | CREDIT
-  amount        Int         // Amount in posting currency (cents)
-  currency      String      @default("TRY") // TRY | USD | EUR
-  rateToTRY     Float       @default(1.0) // Exchange rate to TRY
+  dc            String
+  amount        Int
+  currency      String      @default("TRY")
+  rateToTRY     Float       @default(1.0)
   createdAt     DateTime    @default(now())
+  account       Account     @relation(fields: [accountId], references: [id])
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
   @@index([transactionId])
   @@index([accountId])
   @@index([dc])
 }
 
-// ============================================
-// EMPLOYEE MODELS
-// ============================================
-
-// ==== Employee (Personel) ====
 model Employee {
-  id              String   @id @default(cuid())
-  firstName       String
-  lastName        String
-  tcNo            String?  @unique
-  status          String   @default("ACTIVE") // ACTIVE | PASSIVE | PROBATION
-  
-  // Departman ve pozisyon
-  departmentId    String?
-  department      String?
-  position        String?
-  
-  // İş sözleşmesi tarihleri
-  hireDate        String   // YYYY-MM-DD
-  terminationDate String?
-  
-  // Ücret bilgileri
-  wageType        String   // FIXED | HOURLY
-  baseWageAmount  Int      // cents
-  baseWageCurrency String  @default("TRY")
-  
-  // Çalışma saatleri
-  normalWeeklyHours Int    @default(45)
-  
-  // İletişim bilgileri
-  phone           String?
-  email           String?
-  address         String?
-  
-  // Banka bilgileri
-  iban            String?
-  
-  // SGK bilgileri
-  sgkNo           String?
-  
-  // Vardiya bilgileri
-  shiftId         String?
-  shiftName       String?
-  
-  // Avans politikası
-  advancePolicy   String?
-  
-  // Meta bilgiler
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Relations
-  timeEntries     TimeEntry[]
-  allowances      Allowance[]
-  sgkRecords      SgkRecord[]
-  payrollItems    PayrollItem[]
-  
+  id                String        @id @default(cuid())
+  firstName         String
+  lastName          String
+  tcNo              String?       @unique
+  status            String        @default("ACTIVE")
+  departmentId      String?
+  department        String?
+  position          String?
+  hireDate          String
+  terminationDate   String?
+  wageType          String
+  baseWageAmount    Int
+  baseWageCurrency  String        @default("TRY")
+  normalWeeklyHours Int           @default(45)
+  phone             String?
+  email             String?
+  address           String?
+  iban              String?
+  sgkNo             String?
+  shiftId           String?
+  shiftName         String?
+  advancePolicy     String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  allowances        Allowance[]
+  payrollItems      PayrollItem[]
+  sgkRecords        SgkRecord[]
+  timeEntries       TimeEntry[]
+
   @@index([status, department])
   @@index([hireDate])
   @@index([tcNo])
 }
 
-// ==== TimeEntry (Mesai/Fazla Mesai) ====
 model TimeEntry {
-  id              String   @id @default(cuid())
-  employeeId      String
-  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
-  // Tarih ve saat bilgileri
-  date            String   // YYYY-MM-DD
-  startTime       String   // HH:MM
-  endTime         String   // HH:MM
-  durationHours   Float
-  
-  // Mesai türü ve onay durumu
-  type            String   // NORMAL | OVERTIME
-  approved        Boolean  @default(false)
-  
-  // Açıklama ve notlar
-  note            String?
-  
-  // Onay bilgileri
-  approvedBy      String?
-  approvedAt      DateTime?
-  
-  // Meta bilgiler
-  createdBy       String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  id            String    @id @default(cuid())
+  employeeId    String
+  date          String
+  startTime     String
+  endTime       String
+  durationHours Float
+  type          String
+  approved      Boolean   @default(false)
+  note          String?
+  approvedBy    String?
+  approvedAt    DateTime?
+  createdBy     String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
   @@index([employeeId, date])
   @@index([type, approved])
   @@index([date])
 }
 
-// ==== Allowance (Yol/Yemek) ====
 model Allowance {
-  id              String   @id @default(cuid())
-  employeeId      String
-  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
-  // Ödeme bilgileri
-  date            String   // YYYY-MM-DD
-  kind            String   // MEAL | TRANSPORT | OTHER
-  amount          Int      // cents
-  currency        String   @default("TRY")
-  
-  // Açıklama ve notlar
-  note            String?
-  
-  // Meta bilgiler
-  createdBy       String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  id         String   @id @default(cuid())
+  employeeId String
+  date       String
+  kind       String
+  amount     Int
+  currency   String   @default("TRY")
+  note       String?
+  createdBy  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
   @@index([employeeId, date])
   @@index([kind, date])
 }
 
-// ==== SgkRecord (SGK Kayıtları) ====
 model SgkRecord {
-  id                      String   @id @default(cuid())
-  employeeId              String
-  employee                Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
-  // Dönem bilgileri
-  period                  String   // YYYY-MM
-  
-  // SGK prim tutarları (cents)
-  baseAmount              Int      // Brüt ücret (prim matrahı)
-  employerShare           Int      // İşveren payı
-  employeeShare           Int      // İşçi payı
-  total                   Int      // Toplam prim
-  
-  // Ödeme durumu
-  status                  String   @default("UNPAID") // PAID | UNPAID
-  paymentDate             String?  // YYYY-MM-DD
-  
-  // Finans entegrasyonu
-  financeTransactionId    String?
-  
-  // Meta bilgiler
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-  
+  id                   String   @id @default(cuid())
+  employeeId           String
+  period               String
+  baseAmount           Int
+  employerShare        Int
+  employeeShare        Int
+  total                Int
+  status               String   @default("UNPAID")
+  paymentDate          String?
+  financeTransactionId String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  employee             Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
   @@unique([employeeId, period])
   @@index([period, status])
 }
 
-// ==== PayrollRun (Bordro Hesaplama) ====
 model PayrollRun {
-  id              String   @id @default(cuid())
-  
-  // Dönem bilgileri
-  periodStart     String   // YYYY-MM-DD
-  periodEnd       String   // YYYY-MM-DD
-  
-  // Kapsam
-  scope           String   // ALL | SELECTED
-  employeeIds     String?  // JSON array of employee IDs
-  
-  // Toplam tutarlar (cents)
-  grossTotal      Int      @default(0)
-  overtimeTotal   Int      @default(0)
-  allowancesTotal Int      @default(0)
-  deductionsTotal Int      @default(0)
-  netTotal        Int      @default(0)
-  
-  // Durum
-  status          String   @default("DRAFT") // DRAFT | POSTED
-  
-  // Meta bilgiler
+  id              String        @id @default(cuid())
+  periodStart     String
+  periodEnd       String
+  scope           String
+  employeeIds     String?
+  grossTotal      Int           @default(0)
+  overtimeTotal   Int           @default(0)
+  allowancesTotal Int           @default(0)
+  deductionsTotal Int           @default(0)
+  netTotal        Int           @default(0)
+  status          String        @default("DRAFT")
   createdBy       String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   postedAt        DateTime?
   postedBy        String?
-  
-  // Relations
   items           PayrollItem[]
-  
+
   @@index([periodStart, periodEnd])
   @@index([status])
 }
 
-// ==== PayrollItem (Bordro Kalemleri) ====
 model PayrollItem {
-  id                              String     @id @default(cuid())
-  payrollRunId                    String
-  payrollRun                      PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
-  employeeId                      String
-  employee                        Employee   @relation(fields: [employeeId], references: [id])
-  
-  // Maaş hesaplamaları (cents)
-  grossSalary                     Int        // Dönemde hak ettiği sabit/orantılanmış maaş
-  
-  // Mesai hesaplamaları
-  normalHours                     Float      // Normal çalışma saati
-  overtimeHours                   Float      // Fazla mesai saati
-  overtimeRate                    Float      // Fazla mesai katsayısı (1.5, 2.0)
-  overtimeAmount                  Int        // Fazla mesai tutarı
-  
-  // Ek ödemeler ve kesintiler
-  allowancesTotal                 Int        // Toplam ek ödemeler (yol/yemek)
-  deductionsTotal                 Int        // Toplam kesintiler (avans, ceza)
-  
-  // Net ödeme
-  netPay                          Int        // Net ödenecek tutar
-  
-  // Finans entegrasyonu
-  postedFinanceTransactionId      String?
-  
-  // Meta bilgiler
-  createdAt                       DateTime   @default(now())
-  updatedAt                       DateTime   @updatedAt
-  
+  id                         String     @id @default(cuid())
+  payrollRunId               String
+  employeeId                 String
+  grossSalary                Int
+  normalHours                Float
+  overtimeHours              Float
+  overtimeRate               Float
+  overtimeAmount             Int
+  allowancesTotal            Int
+  deductionsTotal            Int
+  netPay                     Int
+  postedFinanceTransactionId String?
+  createdAt                  DateTime   @default(now())
+  updatedAt                  DateTime   @updatedAt
+  employee                   Employee   @relation(fields: [employeeId], references: [id])
+  payrollRun                 PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+
+  @@unique([payrollRunId, employeeId])
   @@index([payrollRunId])
   @@index([employeeId])
-  @@unique([payrollRunId, employeeId])
 }
