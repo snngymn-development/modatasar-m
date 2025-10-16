@@ -1,0 +1,14 @@
+{
+  "name": "@deneme1/shared",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": { "build": "tsc -p ." },
+  "dependencies": {
+    "@deneme1/core": "workspace:*"
+  },
+  "devDependencies": { "typescript": "^5.6.2" }
+}
+

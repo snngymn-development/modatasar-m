@@ -1,0 +1,18 @@
+﻿version: '3.9'
+services:
+  api:
+    image: IMAGE_TAG
+    env_file: ../../env/server.env
+    ports:
+      - '80:3000'
+    depends_on:
+      - db
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: change-me
+    volumes:
+      - pgdata-prod:/var/lib/postgresql/data
+
+volumes:
+  pgdata-prod:

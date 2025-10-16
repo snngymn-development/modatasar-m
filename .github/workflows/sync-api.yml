@@ -1,0 +1,51 @@
+name: Sync API Contract
+
+on:
+  push:
+    paths:
+      - 'api/openapi.yaml'
+  pull_request:
+    paths:
+      - 'api/openapi.yaml'
+
+jobs:
+  sync-contracts:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: |
+          npm install
+          cd backend && npm install
+          
+      - name: Generate React Types
+        run: |
+          npx openapi-typescript api/openapi.yaml -o src/api/types.ts
+          npx orval --config orval.config.js
+          
+      - name: Generate Flutter Code
+        run: |
+          cd lib
+          dart pub get
+          dart run openapi_generator_cli:generate -i ../api/openapi.yaml -g dart-dio -o api/generated
+          
+      - name: Update Backend DTOs
+        run: |
+          cd backend
+          # Backend DTOs are manually maintained to match OpenAPI
+          # This step could include validation
+          
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git diff --staged --quiet || git commit -m "Auto-sync API contracts"
+          git push

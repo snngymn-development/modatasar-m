@@ -1,93 +1,76 @@
 version: '3.8'
 
 services:
-  # Flutter Web App
-  flutter-app:
-    build: .
-    ports:
-      - "80:80"
-    environment:
-      - NODE_ENV=production
-    restart: unless-stopped
-    networks:
-      - app-network
-
-  # PostgreSQL Database
+  # Database
   postgres:
     image: postgres:15-alpine
+    container_name: deneme1-postgres
     environment:
-      POSTGRES_DB: enterprise_flutter
-      POSTGRES_USER: flutter_user
-      POSTGRES_PASSWORD: flutter_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      POSTGRES_DB: deneme1
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
-    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks:
-      - app-network
+      - deneme1-network
 
-  # Redis Cache
+  # Redis
   redis:
     image: redis:7-alpine
+    container_name: deneme1-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    restart: unless-stopped
     networks:
-      - app-network
+      - deneme1-network
 
-  # Nginx Load Balancer
-  nginx:
-    image: nginx:alpine
+  # API
+  api:
+    build:
+      context: ./backend/api
+      dockerfile: Dockerfile
+    container_name: deneme1-api
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/deneme1
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: your-jwt-secret
     ports:
-      - "8080:80"
-    volumes:
-      - ./nginx-lb.conf:/etc/nginx/nginx.conf
+      - "3001:3001"
     depends_on:
-      - flutter-app
-    restart: unless-stopped
-    networks:
-      - app-network
-
-  # Monitoring - Prometheus
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
+      - postgres
+      - redis
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-    restart: unless-stopped
+      - ./backend/api:/app
+      - /app/node_modules
     networks:
-      - app-network
+      - deneme1-network
 
-  # Monitoring - Grafana
-  grafana:
-    image: grafana/grafana:latest
+  # Web
+  web:
+    build:
+      context: ./frontend/web
+      dockerfile: Dockerfile
+    container_name: deneme1-web
+    environment:
+      REACT_APP_API_URL: http://localhost:3001/api
     ports:
       - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - api
     volumes:
-      - grafana_data:/var/lib/grafana
-    restart: unless-stopped
+      - ./frontend/web:/app
+      - /app/node_modules
     networks:
-      - app-network
+      - deneme1-network
 
 volumes:
   postgres_data:
   redis_data:
-  prometheus_data:
-  grafana_data:
 
 networks:
-  app-network:
+  deneme1-network:
     driver: bridge

@@ -1,0 +1,15 @@
+node_modules
+dist
+build
+.next
+coverage
+*.log
+.env*
+.DS_Store
+*.tgz
+*.tar.gz
+packages/*/lib
+packages/*/dist
+apps/*/dist
+apps/*/build
+apps/*/.next

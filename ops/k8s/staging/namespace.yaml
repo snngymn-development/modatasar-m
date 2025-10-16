@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: deneme1-staging
+  labels:
+    name: deneme1-staging
+    environment: staging

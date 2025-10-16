@@ -1,0 +1,1 @@
+receivers: otlp: protocols: grpc: {} http: {} exporters: logging: loglevel: warn loki: endpoint: http://loki:3100/loki/api/v1/push service: pipelines: traces: receivers: [otlp] exporters: [logging, loki]

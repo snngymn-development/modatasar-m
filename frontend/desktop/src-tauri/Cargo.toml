@@ -1,0 +1,21 @@
+[package]
+name = "deneme1-desktop"
+version = "0.1.0"
+description = "Deneme1 Desktop App"
+authors = ["Deneme1 Team"]
+license = ""
+repository = ""
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "1.5", features = [] }
+
+[dependencies]
+tauri = { version = "1.5", features = ["shell-open"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+

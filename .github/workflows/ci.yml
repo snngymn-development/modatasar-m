@@ -1,216 +1,23 @@
-name: CI/CD Pipeline
+﻿name: CI
 
 on:
-  push:
-    branches: [ main, develop ]
   pull_request:
-    branches: [ main, develop ]
-
-env:
-  FLUTTER_VERSION: '3.35.4'
+    branches: [staging, prod]
+  push:
+    branches: [staging, prod]
 
 jobs:
-  format:
-    name: Code Formatting
+  backend:
+    name: API NestJS Lint/Test/Build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/api
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Check formatting
-        run: dart format --set-exit-if-changed .
-
-  analyze:
-    name: Code Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Analyze code
-        run: dart analyze --fatal-infos
-
-      - name: Check for unused dependencies
-        run: dart pub deps --json | jq '.packages | keys[]' | sort > used_packages.txt
-        continue-on-error: true
-
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Run tests
-        run: flutter test --coverage
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: coverage/lcov.info
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-
-      - name: Check coverage threshold
-        run: |
-          COVERAGE=$(lcov --summary coverage/lcov.info | grep -o '[0-9.]*%' | head -1 | sed 's/%//')
-          THRESHOLD=65
-          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
-            echo "Coverage $COVERAGE% is below threshold $THRESHOLD%"
-            exit 1
-          else
-            echo "Coverage $COVERAGE% meets threshold $THRESHOLD%"
-          fi
-
-  build-web:
-    name: Build Web
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build web
-        run: flutter build web --release
-
-      - name: Upload web build
-        uses: actions/upload-artifact@v3
-        with:
-          name: web-build
-          path: build/web/
-
-  build-windows:
-    name: Build Windows
-    runs-on: windows-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Windows
-        run: flutter build windows --release
-
-      - name: Upload Windows build
-        uses: actions/upload-artifact@v3
-        with:
-          name: windows-build
-          path: build/windows/
-
-  build-android:
-    name: Build Android
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Android APK
-        run: flutter build apk --release
-
-      - name: Upload Android build
-        uses: actions/upload-artifact@v3
-        with:
-          name: android-build
-          path: build/app/outputs/flutter-apk/
-
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-
-      - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: 'trivy-results.sarif'
-
-  deploy:
-    name: Deploy
-    runs-on: ubuntu-latest
-    needs: [format, analyze, test, build-web, build-windows, build-android]
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download web build
-        uses: actions/download-artifact@v3
-        with:
-          name: web-build
-          path: build/web/
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build/web
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm i
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run build

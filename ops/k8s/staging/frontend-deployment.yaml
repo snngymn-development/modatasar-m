@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deneme1-web-staging
+  namespace: deneme1-staging
+  labels:
+    app: deneme1-web
+    environment: staging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: deneme1-web
+      environment: staging
+  template:
+    metadata:
+      labels:
+        app: deneme1-web
+        environment: staging
+    spec:
+      containers:
+      - name: web
+        image: deneme1/web:staging
+        ports:
+        - containerPort: 3001
+        env:
+        - name: NODE_ENV
+          value: "staging"
+        - name: VITE_API_BASE_URL
+          value: "https://api-staging.deneme1.com"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3001
+          initialDelaySeconds: 5
+          periodSeconds: 5

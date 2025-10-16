@@ -1,0 +1,276 @@
+# Cursor AI Talimatları - Deneme1 Projesi
+
+## 🎯 Proje Yapısı
+
+Bu proje **Clean Core Architecture** + **Domain Driven Design (DDD)** prensiplerine göre organize edilmiş TypeScript monorepo'dur.
+
+## 📁 Katman Yapısı
+
+```
+packages/core     → Domain Layer (Pure business logic)
+packages/shared   → Application Layer (Re-exports from core)
+backend/api       → Infrastructure Layer (NestJS + Prisma)
+frontend/web      → Presentation Layer (React + Vite)
+frontend/mobile   → Presentation Layer (React Native)
+```
+
+## 🎨 Yeni Dosya Oluştururken
+
+### Domain Entity (packages/core/src/entities/)
+```typescript
+// Örnek: packages/core/src/entities/Product.ts
+import type { ID, Currency } from '../types/common'
+
+export interface Product {
+  id: ID
+  name: string
+  price: Currency  // cents
+  stock: number
+}
+```
+
+### Validation Schema (packages/core/src/validation/)
+```typescript
+// Örnek: packages/core/src/validation/product.schema.ts
+import { z } from 'zod'
+
+export const ProductSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  price: z.number().positive(),
+  stock: z.number().int().nonnegative()
+})
+```
+
+### Backend Module (backend/api/src/modules/)
+```
+modules/products/
+├── products.module.ts      # Module definition
+├── products.controller.ts  # REST endpoints with @ApiTags, @ApiOperation
+├── products.service.ts     # Business logic + Prisma
+└── dto.ts                  # DTOs with @ApiProperty
+```
+
+### Frontend Component (frontend/web/src/components/)
+```typescript
+// Örnek: frontend/web/src/components/ProductCard.tsx
+import React from 'react'
+import { fmtTRY } from '@core/utils/money'
+import type { Product } from '@shared'
+
+export function ProductCard({ product }: { product: Product }) {
+  return (
+    <div>
+      <h3>{product.name}</h3>
+      <p>{fmtTRY(product.price)}</p>  {/* cents auto-converted */}
+    </div>
+  )
+}
+```
+
+## 🚫 YAPMA (Don'ts)
+
+❌ Domain logic'i frontend'e yazma  
+❌ Business logic'i controller'a yazma  
+❌ `any` type kullanma  
+❌ Validation'ı atlama  
+❌ Para formatında manuel /100 yapma (fmtTRY içinde yapılıyor)
+
+## ✅ YAP (Do's)
+
+✅ Domain logic'i `packages/core` içinde tut  
+✅ TypeScript strict mode kullan  
+✅ Zod ile validation yap  
+✅ Prisma migrations kullan  
+✅ RESTful API tasarla  
+✅ Swagger documentation güncelle (`@ApiOperation`, `@ApiProperty`)  
+✅ Para tutarlarını cents (Int) olarak sakla  
+✅ `fmtTRY(cents)` ile göster (otomatik TL'ye çevirir)
+
+## 💰 Para (Currency) Kuralları
+
+**ÖNEMLİ:** Database'de para **cents** (kuruş) olarak saklanır!
+
+```typescript
+// Database
+total: 10000      // 100.00 TL (cents)
+
+// Display
+fmtTRY(total)     // "₺100" (otomatik /100 yapılır)
+
+// ❌ YAPMA
+fmtTRY(total / 100)  // Çifte bölme hatası!
+
+// ✅ YAP
+fmtTRY(total)        // Utility fonksiyon halledecek
+```
+
+## 🗂️ Path Aliases
+
+```typescript
+// Backend
+import { PrismaService } from '../../common/prisma.service'  // Relative path OK
+
+// Frontend
+import { api } from '@/lib/api'                    // @ = src/
+import { Customer } from '@shared'                 // @shared = packages/shared
+import { fmtTRY } from '@core/utils/money'        // @core = packages/core
+```
+
+## 🔌 API Endpoint Pattern
+
+```typescript
+@ApiTags('products')
+@Controller('products')
+export class ProductsController {
+  constructor(private readonly service: ProductsService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Get all products' })
+  @ApiResponse({ status: 200, description: 'Return all products' })
+  findAll() {
+    return this.service.findAll()
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Create product' })
+  create(@Body() dto: CreateProductDto) {
+    return this.service.create(dto)
+  }
+}
+```
+
+## 🗃️ Database Pattern (Prisma)
+
+```prisma
+model Product {
+  id        String   @id @default(cuid())
+  name      String
+  price     Int      // ⚠️ Cents, not TL!
+  stock     Int
+  createdAt DateTime @default(now())
+}
+```
+
+After schema change:
+```bash
+npx prisma migrate dev --name add_products
+pnpm prisma:gen
+```
+
+## 📝 Validation Pattern
+
+```typescript
+// Backend DTO
+export class CreateProductDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  name: string
+
+  @ApiProperty()
+  @IsNumber()
+  @Min(0)
+  price: number
+}
+
+// Frontend validation (same Zod schema from @shared)
+import { ProductSchema } from '@shared'
+
+const result = ProductSchema.safeParse(formData)
+```
+
+## 🌍 i18n Pattern
+
+```typescript
+// Add translations
+// packages/core/src/i18n/tr.ts
+export default {
+  products: {
+    title: 'Ürünler',
+    add: 'Yeni Ürün Ekle'
+  }
+}
+
+// Usage
+import { TEXT } from '@shared'
+const title = TEXT.tr.products.title
+```
+
+## 📊 Modül Ekleme Checklist
+
+Yeni modül (örn: Products) eklerken:
+
+- [ ] Domain entity (`packages/core/src/entities/Product.ts`)
+- [ ] Validation schema (`packages/core/src/validation/product.schema.ts`)
+- [ ] Export from validation index
+- [ ] Prisma model (`backend/api/prisma/schema.prisma`)
+- [ ] Run migration (`npx prisma migrate dev`)
+- [ ] NestJS module (`backend/api/src/modules/products/`)
+  - [ ] products.module.ts
+  - [ ] products.controller.ts (with Swagger decorators)
+  - [ ] products.service.ts
+  - [ ] dto.ts (with @ApiProperty)
+- [ ] Import module in AppModule
+- [ ] Frontend API calls (`frontend/web/src/lib/api.ts`)
+- [ ] Frontend components
+- [ ] i18n translations (TR/EN)
+
+## 🏗️ Dependency Rules
+
+```
+frontend/* → @shared → @core
+backend/api → @core (for types only, not logic)
+packages/core → NO dependencies (pure domain)
+```
+
+## 📖 Referans Dosyalar
+
+- **COMPLETE_GUIDE.md** - Eksiksiz rehber (2400+ satır)
+- **CRITICAL_FIXES.md** - Kritik düzeltmeler
+- **Swagger** - http://localhost:3000/docs
+
+## 🎯 Geliştirme Komutları
+
+```bash
+# Development
+pnpm dev:api       # Backend
+pnpm dev:web       # Frontend
+pnpm dev:mobile    # Mobile
+
+# Database
+pnpm prisma:gen
+pnpm prisma:migrate
+pnpm prisma:seed
+
+# Build
+pnpm build
+
+# OpenAPI
+pnpm codegen
+```
+
+## 🔧 Troubleshooting
+
+**Type errors?** → Rebuild packages
+```bash
+pnpm --filter @deneme1/core build
+pnpm --filter @deneme1/shared build
+```
+
+**Database issues?** → Reset
+```bash
+pnpm --filter @deneme1/api prisma migrate reset
+```
+
+**Import errors?** → Check aliases in:
+- tsconfig.base.json
+- vite.config.ts
+- metro.config.js
+
+---
+
+**Bu dosya Cursor AI'ın projeyi doğru anlaması için talimatlar içerir.**
+**Her yeni kod üretiminde bu kurallara uyulmalıdır.**
+
+

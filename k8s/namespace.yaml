@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: enterprise-flutter
-  labels:
-    name: enterprise-flutter
-    app: flutter-pos
-    environment: production

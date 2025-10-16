@@ -1,0 +1,31 @@
+{
+  "name": "deneme1",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "audit:pages": "ts-node --transpile-only tools/audit/pages-audit.ts",
+    "audit:platforms": "ts-node --transpile-only tools/audit/pages-audit.ts",
+    "dev:api": "pnpm --filter @deneme1/api dev",
+    "dev:web": "pnpm --filter @deneme1/web dev",
+    "dev:mobile": "pnpm --filter @deneme1/mobile start",
+    "build": "pnpm --filter @deneme1/core build && pnpm --filter @deneme1/shared build && pnpm --filter @deneme1/api build && pnpm --filter @deneme1/web build",
+    "test:e2e": "playwright test",
+    "prisma:gen": "pnpm --filter @deneme1/api prisma generate",
+    "prisma:migrate": "pnpm --filter @deneme1/api prisma migrate dev",
+    "prisma:seed": "pnpm --filter @deneme1/api prisma db seed"
+  },
+  "devDependencies": {
+    "glob": "^10.3.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.6.2"
+  },
+  "dependencies": {
+    "@nestjs/mapped-types": "^2.1.0",
+    "@nestjs/passport": "^11.0.5",
+    "@prisma/client": "^5.22.0",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.7.2",
+    "@types/passport": "^1.0.17",
+    "passport": "^0.7.0"
+  }
+}

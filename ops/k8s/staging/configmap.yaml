@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deneme1-staging-config
+  namespace: deneme1-staging
+data:
+  NODE_ENV: "staging"
+  API_PREFIX: "api"
+  CORS_ORIGIN: "https://staging.deneme1.com"
+  JWT_EXPIRES_IN: "1h"
+  JWT_REFRESH_EXPIRES_IN: "7d"
+  REDIS_HOST: "redis-staging"
+  REDIS_PORT: "6379"
+  DATABASE_URL: "postgresql://postgres:password@postgres-staging:5432/deneme1_staging"

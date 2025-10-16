@@ -1,5 +1,5 @@
-# Multi-stage build for Flutter web app
-FROM ubuntu:20.04 as base
+# Multi-stage Dockerfile for POS System
+FROM ubuntu:22.04 as base
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -12,38 +12,55 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Flutter
+ARG FLUTTER_VERSION=3.35.4
 RUN git clone https://github.com/flutter/flutter.git -b stable /flutter
 ENV PATH="/flutter/bin:${PATH}"
 
-# Enable Flutter web
-RUN flutter config --enable-web
+# Verify Flutter installation
+RUN flutter doctor
 
 # Set working directory
 WORKDIR /app
 
 # Copy pubspec files
 COPY pubspec.yaml pubspec.lock ./
-
-# Get dependencies
 RUN flutter pub get
 
 # Copy source code
 COPY . .
 
-# Build web app
-RUN flutter build web --release
+# Build the application
+ARG BUILD_ENV=production
+RUN flutter build windows --dart-define=FLUTTER_ENV=$BUILD_ENV
 
-# Production stage
-FROM nginx:alpine
+# Final stage
+FROM ubuntu:22.04
 
-# Copy built app
-COPY --from=base /app/build/web /usr/share/nginx/html
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libgtk-3-0 \
+    libx11-xcb1 \
+    libxcb-dri3-0 \
+    libxss1 \
+    libgconf-2-4 \
+    libnss3 \
+    libxrandr2 \
+    libasound2 \
+    libpangocairo-1.0-0 \
+    libatk1.0-0 \
+    libcairo-gobject2 \
+    libgtk-3-0 \
+    libgdk-pixbuf2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+# Copy built application
+COPY --from=base /app/build/windows/x64/runner/Release /app
 
-# Expose port
-EXPOSE 80
+# Set working directory
+WORKDIR /app
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Expose port (if needed)
+EXPOSE 3000
+
+# Run the application
+CMD ["./deneme1.exe"]

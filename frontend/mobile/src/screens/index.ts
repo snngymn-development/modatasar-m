@@ -1,0 +1,25 @@
+// Export all screens
+export { default as DashboardScreen } from './DashboardScreen'
+export { default as PartnersScreen } from './PartnersScreen'
+export { default as RentSaleScreen } from './RentSaleScreen'
+export { default as InventoryScreen } from './InventoryScreen'
+export { default as ScheduleScreen } from './ScheduleScreen'
+export { default as MoreScreen } from './MoreScreen'
+
+// Additional screens (will be created)
+export { default as FinanceScreen } from './FinanceScreen'
+export { default as PurchasingScreen } from './PurchasingScreen'
+export { default as HRScreen } from './HRScreen'
+export { default as AIScreen } from './AIScreen'
+export { default as SettingsScreen } from './SettingsScreen'
+export { default as ParamsScreen } from './ParamsScreen'
+export { default as ReportsScreen } from './ReportsScreen'
+export { default as WhatsAppScreen } from './WhatsAppScreen'
+export { default as ExecutiveScreen } from './ExecutiveScreen'
+export { default as PartiesScreen } from './PartiesScreen'
+export { default as InventoryStockScreen } from './InventoryStockScreen'
+export { default as MoreStateScreen } from './MoreStateScreen'
+export { default as AIAssistScreen } from './AIAssistScreen'
+export { default as AIChatScreen } from './AIChatScreen'
+export { default as PartnersCustomersScreen } from './PartnersCustomersScreen'
+
