@@ -22,6 +22,7 @@ model Customer {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   orders         Order[]
+  bodyMeasurements CustomerBodyMeasurements[]
 }
 
 model Supplier {
@@ -66,6 +67,9 @@ model Order {
   createdAt    DateTime  @default(now())
   customer     Customer  @relation(fields: [customerId], references: [id])
   rental       Rental?
+  details      OrderDetail[]
+  fittings     OrderFitting[]
+  statusHistory OrderStatus[]
 }
 
 model Rental {
@@ -441,4 +445,83 @@ model PayrollItem {
   @@unique([payrollRunId, employeeId])
   @@index([payrollRunId])
   @@index([employeeId])
+}
+
+// Order Detail Models
+model OrderDetail {
+  id           String    @id @default(cuid())
+  orderId      String
+  description  String?
+  amount       Int       // Base amount in cents
+  importantNote String?
+  totalAmount  Int       // Calculated: amount + charges - discounts
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  order        Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  charges      OrderCharge[]
+  discounts    OrderDiscount[]
+}
+
+model OrderCharge {
+  id            String      @id @default(cuid())
+  orderDetailId String
+  label         String
+  amount        Int         // Amount in cents
+  description   String?
+  createdAt     DateTime    @default(now())
+  orderDetail   OrderDetail @relation(fields: [orderDetailId], references: [id], onDelete: Cascade)
+}
+
+model OrderDiscount {
+  id            String      @id @default(cuid())
+  orderDetailId String
+  label         String
+  amount        Int         // Amount in cents
+  description   String?
+  createdAt     DateTime    @default(now())
+  orderDetail   OrderDetail @relation(fields: [orderDetailId], references: [id], onDelete: Cascade)
+}
+
+model OrderFitting {
+  id            String   @id @default(cuid())
+  orderId       String
+  fittingNumber Int
+  fittingDate   DateTime
+  notes         String?
+  status        String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  createdAt     DateTime @default(now())
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, fittingNumber])
+}
+
+model OrderStatus {
+  id        String   @id @default(cuid())
+  orderId   String
+  status    String   // STARTED, PROGRESS_50, PROGRESS_80, READY, DELIVERED
+  percentage Int
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
+
+model CustomerBodyMeasurements {
+  id          String    @id @default(cuid())
+  customerId  String
+  chest       Float     // cm
+  waist       Float     // cm
+  hip         Float     // cm
+  shoulder    Float     // cm
+  armLength   Float     // cm
+  legLength   Float     // cm
+  neck        Float     // cm
+  notes       String?
+  measuredAt  DateTime
+  createdAt   DateTime  @default(now())
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, measuredAt])
 }

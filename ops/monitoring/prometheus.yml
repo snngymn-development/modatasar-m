@@ -1,0 +1,56 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert-rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter - System metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Deneme1 API
+  - job_name: 'deneme1-api'
+    static_configs:
+      - targets: ['api:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Deneme1 Web
+  - job_name: 'deneme1-web'
+    static_configs:
+      - targets: ['web:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Database
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 60s
+
+  # Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 60s
+
+  # Jaeger
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger:16686']
+    metrics_path: '/metrics'
+    scrape_interval: 60s
