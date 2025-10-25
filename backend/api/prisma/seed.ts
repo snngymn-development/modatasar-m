@@ -1,3 +1,4 @@
+
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -9,17 +10,48 @@ async function main() {
   await prisma.customerConsent.deleteMany()
   await prisma.contract.deleteMany()
   await prisma.contractTemplate.deleteMany()
+
+  // Finance
   await prisma.posting.deleteMany()
   await prisma.transaction.deleteMany()
   await prisma.account.deleteMany()
+
+  // Agenda / Calendar
   await prisma.agendaEvent.deleteMany()
+  await prisma.calendarEvent.deleteMany()
+
+  // Rentals & Orders
   await prisma.rental.deleteMany()
+  await prisma.orderStatus.deleteMany()
+  await prisma.orderFitting.deleteMany()
+  await prisma.orderDiscount.deleteMany()
+  await prisma.orderCharge.deleteMany()
+  await prisma.orderDetail.deleteMany()
   await prisma.order.deleteMany()
+
+  // Purchases & Stock
+  await prisma.goodsReceiptLine.deleteMany()
+  await prisma.goodsReceipt.deleteMany()
   await prisma.purchaseItem.deleteMany()
+  await prisma.purchaseDiscount.deleteMany()
+  await prisma.purchaseCharge.deleteMany()
   await prisma.purchase.deleteMany()
+
+  await prisma.stockMovement.deleteMany()
+  await prisma.stockCard.deleteMany()
+
+  // Products / People / Orgs
   await prisma.product.deleteMany()
   await prisma.customer.deleteMany()
   await prisma.supplier.deleteMany()
+
+  // HR (ileride kullanırsan)
+  await prisma.payrollItem.deleteMany()
+  await prisma.payrollRun.deleteMany()
+  await prisma.sgkRecord.deleteMany()
+  await prisma.allowance.deleteMany()
+  await prisma.timeEntry.deleteMany()
+  await prisma.employee.deleteMany()
 
   console.log('🗑️  Cleaned existing data')
 
@@ -153,21 +185,21 @@ async function main() {
       
       // First create customers and suppliers (if they don't exist)
       const customer1 = await prisma.customer.upsert({
-        where: { id: 'cust-1' },
+        where: { id: 'cust-F1' },
         update: {},
         create: {
-          id: 'cust-1',
+          id: 'cust-F1',
           name: 'Ayşe Yılmaz',
           phone: '0532 123 45 67',
           email: 'ayse@example.com'
         }
       })
-      
+
       const supplier1 = await prisma.supplier.upsert({
-        where: { id: 'supp-1' },
+        where: { id: 'supp-F1' },
         update: {},
         create: {
-          id: 'supp-1',
+          id: 'supp-F1',
           name: 'Tekstil AŞ',
           phone: '0212 123 45 67',
           email: 'info@tekstil.com'
@@ -183,19 +215,19 @@ async function main() {
           currency: 'TRY',
           rateToTRY: 1.0,
           note: 'Müşteri ödemesi',
-          customerId: 'cust-1',
+          customerId: 'cust-F1',
           createdBy: 'system',
           postings: {
             create: [
               {
-                accountId: 'acc-cash', // Kasa
+                accountId: 'acc-cash', // Kasa (nakit giriş)
                 dc: 'DEBIT',
                 amount: 50000,
                 currency: 'TRY',
                 rateToTRY: 1.0,
               },
               {
-                accountId: 'acc-cash', // Sanal müşteri alacağı (şimdilik aynı hesap)
+                accountId: 'acc-bank-garanti', // Müşteri alacağı kapatma (banka)
                 dc: 'CREDIT',
                 amount: 50000,
                 currency: 'TRY',
@@ -215,19 +247,19 @@ async function main() {
           currency: 'TRY',
           rateToTRY: 1.0,
           note: 'Tedarikçi ödemesi',
-          supplierId: 'supp-1',
+          supplierId: 'supp-F1',
           createdBy: 'system',
           postings: {
             create: [
               {
-                accountId: 'acc-cash', // Sanal tedarikçi borcu (şimdilik aynı hesap)
+                accountId: 'acc-bank-garanti', // Tedarikçi borcu kapatma (banka çıkışı)
                 dc: 'DEBIT',
                 amount: 25000,
                 currency: 'TRY',
                 rateToTRY: 1.0,
               },
               {
-                accountId: 'acc-bank-garanti', // Banka
+                accountId: 'acc-bank-garanti', // Banka hesabı
                 dc: 'CREDIT',
                 amount: 25000,
                 currency: 'TRY',
@@ -251,14 +283,14 @@ async function main() {
           postings: {
             create: [
               {
-                accountId: 'acc-cash', // Kasa
+                accountId: 'acc-cash', // Kasa (nakit giriş)
                 dc: 'DEBIT',
                 amount: 10000,
                 currency: 'TRY',
                 rateToTRY: 1.0,
               },
               {
-                accountId: 'acc-bank-garanti', // Banka
+                accountId: 'acc-bank-garanti', // Banka (nakit çıkış)
                 dc: 'CREDIT',
                 amount: 10000,
                 currency: 'TRY',
@@ -632,8 +664,17 @@ async function main() {
   // 2.5. CREATE SUPPLIERS (8)
   // ============================================
   const suppliers = await Promise.all([
-    prisma.supplier.create({
-      data: {
+    prisma.supplier.upsert({
+      where: { id: 'supp-1' },
+      update: {
+        name: 'Tekstil AŞ',
+        phone: '+90 212 555 0101',
+        email: 'info@tekstilas.com',
+        city: 'İstanbul',
+        category: 'FABRIC',
+        status: 'ACTIVE',
+      },
+      create: {
         id: 'supp-1',
         name: 'Tekstil AŞ',
         phone: '+90 212 555 0101',
@@ -737,8 +778,8 @@ async function main() {
         deliveryDate: new Date('2025-11-15'),
         total: 50000, // 500 TL in cents
         collected: 20000, // 200 TL
-        status: 'ACTIVE',
-        stage: 'IN_PROGRESS_50',
+        status: 'half_ready',
+        stage: 'half_ready',
       },
     }),
     prisma.order.create({
@@ -749,8 +790,8 @@ async function main() {
         deliveryDate: new Date('2025-11-20'),
         total: 75000, // 750 TL
         collected: 75000, // Paid in full
-        status: 'COMPLETED',
-        stage: 'DELIVERED',
+        status: 'delivered',
+        stage: 'delivered',
       },
     }),
     prisma.order.create({
@@ -762,8 +803,8 @@ async function main() {
         deliveryDate: new Date('2025-12-01'),
         total: 100000, // 1000 TL
         collected: 30000, // 300 TL
-        status: 'ACTIVE',
-        stage: 'CREATED',
+        status: 'pending_approval',
+        stage: 'pending_approval',
       },
     }),
     prisma.order.create({
@@ -774,8 +815,8 @@ async function main() {
         deliveryDate: new Date('2025-11-25'),
         total: 45000, // 450 TL
         collected: 45000,
-        status: 'ACTIVE',
-        stage: 'READY',
+        status: 'fully_ready',
+        stage: 'fully_ready',
       },
     }),
     prisma.order.create({
@@ -787,8 +828,8 @@ async function main() {
         deliveryDate: new Date('2025-12-10'),
         total: 85000, // 850 TL
         collected: 0,
-        status: 'ACTIVE',
-        stage: 'IN_PROGRESS_80',
+        status: 'almost_ready',
+        stage: 'almost_ready',
       },
     }),
     prisma.order.create({
@@ -799,8 +840,8 @@ async function main() {
         deliveryDate: new Date('2025-10-20'),
         total: 30000,
         collected: 30000,
-        status: 'CANCELLED',
-        stage: 'CREATED',
+        status: 'cancelled',
+        stage: 'cancelled',
       },
     }),
     prisma.order.create({
@@ -811,8 +852,8 @@ async function main() {
         deliveryDate: new Date('2025-11-30'),
         total: 60000,
         collected: 15000,
-        status: 'ACTIVE',
-        stage: 'IN_PROGRESS_50',
+        status: 'half_ready',
+        stage: 'half_ready',
       },
     }),
     prisma.order.create({
@@ -823,8 +864,8 @@ async function main() {
         deliveryDate: new Date('2025-12-05'),
         total: 95000,
         collected: 50000,
-        status: 'ACTIVE',
-        stage: 'IN_PROGRESS_80',
+        status: 'almost_ready',
+        stage: 'almost_ready',
       },
     }),
     prisma.order.create({
@@ -835,8 +876,8 @@ async function main() {
         deliveryDate: new Date('2025-11-18'),
         total: 40000,
         collected: 40000,
-        status: 'COMPLETED',
-        stage: 'DELIVERED',
+        status: 'delivered',
+        stage: 'delivered',
       },
     }),
     prisma.order.create({
@@ -847,8 +888,8 @@ async function main() {
         deliveryDate: new Date('2025-12-15'),
         total: 70000,
         collected: 20000,
-        status: 'ACTIVE',
-        stage: 'CREATED',
+        status: 'pending_approval',
+        stage: 'pending_approval',
       },
     }),
   ])
@@ -864,8 +905,8 @@ async function main() {
       organization: 'Düğün Organizasyonu',
       total: 20000, // 200 TL
       collected: 20000,
-      status: 'ACTIVE',
-      stage: 'PICKED_UP',
+      status: 'delivered',
+      stage: 'delivered',
       rental: {
         create: {
           id: 'rental-1',
@@ -886,8 +927,8 @@ async function main() {
       customerId: 'cust-2',
       total: 15000, // 150 TL
       collected: 15000,
-      status: 'COMPLETED',
-      stage: 'RETURNED',
+      status: 'completed',
+      stage: 'completed',
       rental: {
         create: {
           id: 'rental-2',
@@ -908,8 +949,8 @@ async function main() {
       organization: 'Kaya Holding Etkinliği',
       total: 25000, // 250 TL
       collected: 12500,
-      status: 'ACTIVE',
-      stage: 'BOOKED',
+      status: 'approved',
+      stage: 'approved',
       rental: {
         create: {
           id: 'rental-3',
@@ -923,19 +964,19 @@ async function main() {
     },
   })
 
-  const rentalOrder4 = await prisma.order.create({
+  const       rentalOrder4 = await prisma.order.create({
     data: {
       id: 'order-14',
       type: 'RENTAL',
       customerId: 'cust-4',
       total: 18000, // 180 TL
       collected: 18000,
-      status: 'ACTIVE',
-      stage: 'PICKED_UP',
+      status: 'delivered',
+      stage: 'delivered',
       rental: {
         create: {
           id: 'rental-4',
-          productId: '1', // Casual Takım
+          productId: 'prod-4', // Casual Takım
           start: new Date('2025-10-25'),
           end: new Date('2025-10-27'),
         },
@@ -951,8 +992,8 @@ async function main() {
       organization: 'Arslan Tekstil Gala',
       total: 30000, // 300 TL
       collected: 0,
-      status: 'ACTIVE',
-      stage: 'BOOKED',
+      status: 'approved',
+      stage: 'approved',
       rental: {
         create: {
           id: 'rental-5',
@@ -972,8 +1013,24 @@ async function main() {
   console.log('📦 Creating stock cards...')
   
   const stockCards = await Promise.all([
-    prisma.stockCard.create({
-      data: {
+    prisma.stockCard.upsert({
+      where: { id: 'stock-1' },
+      update: {
+        code: 'STK-001',
+        name: 'Kumaş - Lacivert',
+        description: 'Lacivert renkli pamuk kumaş',
+        category: 'Kumaş',
+        type: 'Pamuk',
+        kind: 'Düz',
+        group: 'Günlük',
+        unit: 'metre',
+        criticalQty: 50,
+        location: 'MAIN',
+        supplierId: 'supp-1',
+        tags: 'lacivert,kumaş,pamuk',
+        status: 'ACTIVE',
+      },
+      create: {
         id: 'stock-1',
         code: 'STK-001',
         name: 'Kumaş - Lacivert',
@@ -1029,7 +1086,7 @@ async function main() {
     prisma.stockCard.create({
       data: {
         id: 'stock-4',
-        code: 'STK-004',
+        code: 'STK-004-NEW',
         name: 'İplik - Beyaz',
         description: 'Beyaz polyester iplik',
         category: 'Aksesuar',
@@ -1480,7 +1537,7 @@ async function main() {
         vatTot: 135000,   // 1,350 TL
         chargeTot: 25000, // 250 TL
         discountTot: 50000, // 500 TL
-        total: 860000,    // 8,600 TL
+        total: 860000,    // 8,600 TL (subTotal + vatTot + chargeTot - discountTot)
         paid: 0,
         items: {
           create: [
@@ -1490,7 +1547,7 @@ async function main() {
               unitPrice: 50000, // 500 TL per unit
               lineSubTotal: 750000,
               lineVat: 135000,
-              lineTotal: 885000
+              lineTotal: 835000 // 750000 + 135000 - 50000 (discount)
             }
           ]
         }
@@ -1538,7 +1595,7 @@ async function main() {
         vatTot: 216000,    // 2,160 TL
         chargeTot: 50000,  // 500 TL
         discountTot: 100000, // 1,000 TL
-        total: 1366000,    // 13,660 TL
+        total: 1366000,    // 13,660 TL (subTotal + vatTot + chargeTot - discountTot)
         paid: 0,
         items: {
           create: [
@@ -1548,7 +1605,7 @@ async function main() {
               unitPrice: 600000, // 6,000 TL per unit
               lineSubTotal: 1200000,
               lineVat: 216000,
-              lineTotal: 1416000
+              lineTotal: 1380000 // 1200000 + 216000 - 100000 (discount)
             }
           ]
         }
@@ -1649,7 +1706,7 @@ async function main() {
         subTotal: 85000,  // 850 TL
         vatTot: 15300,    // 153 TL
         chargeTot: 5000,  // 50 TL
-        total: 105300,    // 1,053 TL
+        total: 105300,    // 1,053 TL (subTotal + vatTot + chargeTot)
         paid: 105300,
         items: {
           create: [
@@ -1660,7 +1717,7 @@ async function main() {
               unitPrice: 85000,
               lineSubTotal: 85000,
               lineVat: 15300,
-              lineTotal: 100300
+              lineTotal: 105300 // 85000 + 15300 + 5000 (charge)
             }
           ]
         }

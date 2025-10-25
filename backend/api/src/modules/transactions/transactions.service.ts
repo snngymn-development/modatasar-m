@@ -73,12 +73,20 @@ export class TransactionsService {
   }
 
   async getSummary() {
+    const activeStatuses = ['pending_approval', 'approved', 'started', 'half_ready', 'almost_ready', 'fully_ready', 'delivered']
+
     const [tailoringCount, rentalCount] = await Promise.all([
       this.prisma.order.count({
-        where: { type: 'TAILORING', status: 'ACTIVE' },
+        where: {
+          type: 'TAILORING',
+          status: { in: activeStatuses }
+        },
       }),
       this.prisma.order.count({
-        where: { type: 'RENTAL', status: 'ACTIVE' },
+        where: {
+          type: 'RENTAL',
+          status: { in: activeStatuses }
+        },
       }),
     ])
 

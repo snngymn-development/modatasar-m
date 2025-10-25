@@ -19,6 +19,7 @@ import { TimeEntriesModule } from './modules/time-entries/time-entries.module'
 import { AllowancesModule } from './modules/allowances/allowances.module'
 import { PayrollModule } from './modules/payroll/payroll.module'
 import { ContractsModule } from './modules/contracts/contracts.module'
+import { OrdersModule } from './modules/orders/orders.module'
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { ContractsModule } from './modules/contracts/contracts.module'
     AllowancesModule,
     PayrollModule,
     ContractsModule,
+    OrdersModule,
   ],
   providers: [PrismaService, EventsGateway],
   exports: [PrismaService],
