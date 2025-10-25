@@ -935,7 +935,7 @@ async function main() {
       rental: {
         create: {
           id: 'rental-4',
- // Casual Takım
+          productId: '1', // Casual Takım
           start: new Date('2025-10-25'),
           end: new Date('2025-10-27'),
         },
@@ -956,10 +956,9 @@ async function main() {
       rental: {
         create: {
           id: 'rental-5',
- // Smokin (yeniden)
+          productId: 'prod-1', // Smokin (yeniden)
           start: new Date('2025-11-10'),
           end: new Date('2025-11-12'),
-          organization: 'Arslan Tekstil Gala',
         },
       },
     },
@@ -1232,6 +1231,7 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-1',
+        productId: 'prod-1',
         type: 'ALTERATION',
         start: new Date('2025-10-23'),
         end: new Date('2025-10-24'),
@@ -1241,6 +1241,7 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-2',
+        productId: 'prod-2',
         type: 'ALTERATION',
         start: new Date('2025-10-28'),
         end: new Date('2025-10-29'),
@@ -1250,6 +1251,7 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-3',
+        productId: 'prod-3',
         type: 'ALTERATION',
         start: new Date('2025-11-01'),
         end: new Date('2025-11-02'),
@@ -1261,6 +1263,7 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-4',
+        productId: 'prod-1',
         type: 'DRY_CLEANING',
         start: new Date('2025-10-30'),
         end: new Date('2025-10-31'),
@@ -1270,6 +1273,7 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-5',
+        productId: 'prod-2',
         type: 'DRY_CLEANING',
         start: new Date('2025-11-08'),
         end: new Date('2025-11-09'),
@@ -1279,6 +1283,7 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-6',
+        productId: 'prod-3',
         type: 'DRY_CLEANING',
         start: new Date('2025-10-26'),
         end: new Date('2025-10-27'),
@@ -1290,6 +1295,7 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-7',
+        productId: 'prod-4',
         type: 'OUT_OF_SERVICE',
         start: new Date('2025-10-18'),
         end: new Date('2025-10-25'),
@@ -1299,6 +1305,7 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-8',
+        productId: 'prod-5',
         type: 'OUT_OF_SERVICE',
         start: new Date('2025-11-13'),
         end: new Date('2025-11-15'),

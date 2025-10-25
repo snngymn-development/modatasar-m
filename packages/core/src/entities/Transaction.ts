@@ -63,3 +63,28 @@ export interface CreatePostingInput {
   currency: 'TRY' | 'USD' | 'EUR'
   rateToTRY: number
 }
+
+/**
+ * Transaction with detailed information for table display
+ */
+export interface TransactionWithDetails extends Transaction {
+  customer?: {
+    id: ID
+    name: string
+  }
+  supplier?: {
+    id: ID
+    name: string
+  }
+  accountPostings: {
+    account: {
+      id: ID
+      name: string
+      type: string
+    }
+    dc: 'DEBIT' | 'CREDIT'
+    amount: number
+  }[]
+  debitTotal: number
+  creditTotal: number
+}
