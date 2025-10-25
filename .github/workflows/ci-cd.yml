@@ -137,7 +137,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push API image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./backend/api
           push: true
@@ -146,7 +146,7 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/deneme1-api:${{ github.sha }}
 
       - name: Build and push Web image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./frontend/web
           push: true
