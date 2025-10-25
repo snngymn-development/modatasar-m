@@ -13,20 +13,53 @@ export class FinanceService {
 
   async getAccountsWithBalance() {
     const accounts = await this.prisma.account.findMany({
-      where: { isActive: true },
+      where: { 
+        isActive: true,
+        parentId: null // Only get parent accounts
+      },
       include: {
-        postings: true
-      }
+        postings: true,
+        children: {
+          where: { isActive: true },
+          include: {
+            postings: true
+          }
+        }
+      },
+      orderBy: [
+        { type: 'asc' },
+        { name: 'asc' }
+      ]
     })
 
-    return accounts.map(account => ({
-      ...account,
-      balanceTRY: FinanceUtils.calculateAccountBalance(account.postings)
-    }))
+    return accounts.map(account => {
+      const balance = FinanceUtils.calculateAccountBalance(account.postings)
+      const childrenWithBalance = account.children?.map(child => ({
+        ...child,
+        balanceTRY: FinanceUtils.calculateAccountBalance(child.postings),
+        availableCredit: child.creditLimit ? child.creditLimit - child.usedAmount : undefined
+      })) || []
+
+      return {
+        ...account,
+        balanceTRY: balance,
+        children: childrenWithBalance,
+        availableCredit: account.creditLimit ? account.creditLimit - account.usedAmount : undefined
+      }
+    })
   }
 
   async createAccount(dto: CreateAccountDto) {
     return this.prisma.account.create({
+      data: dto
+    })
+  }
+
+  async updateAccount(id: string, dto: CreateAccountDto) {
+    const account = await this.getAccount(id)
+    
+    return this.prisma.account.update({
+      where: { id },
       data: dto
     })
   }
@@ -101,6 +134,18 @@ export class FinanceService {
             include: {
               account: true
             }
+          },
+          customer: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          supplier: {
+            select: {
+              id: true,
+              name: true
+            }
           }
         },
         orderBy: { [sort]: 'desc' },
@@ -110,8 +155,36 @@ export class FinanceService {
       this.prisma.transaction.count({ where })
     ])
 
+    // Transform to TransactionWithDetails format
+    const transformedTransactions = transactions.map(transaction => {
+      const accountPostings = transaction.postings.map(posting => ({
+        account: {
+          id: posting.account.id,
+          name: posting.account.name,
+          type: posting.account.type
+        },
+        dc: posting.dc,
+        amount: posting.amount
+      }))
+
+      const debitTotal = transaction.postings
+        .filter(p => p.dc === 'DEBIT')
+        .reduce((sum, p) => sum + p.amount, 0)
+
+      const creditTotal = transaction.postings
+        .filter(p => p.dc === 'CREDIT')
+        .reduce((sum, p) => sum + p.amount, 0)
+
+      return {
+        ...transaction,
+        accountPostings,
+        debitTotal,
+        creditTotal
+      }
+    })
+
     return {
-      data: transactions,
+      data: transformedTransactions,
       pagination: {
         page,
         limit,

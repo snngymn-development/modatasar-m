@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsString, IsOptional, IsIn } from 'class-validator'
+import { IsString, IsOptional, IsIn, IsNumber } from 'class-validator'
 
 export class CreatePurchaseDto {
   @ApiProperty() 
@@ -61,6 +61,27 @@ export class ListQueryDto {
   
   @ApiPropertyOptional() 
   dateTo?: string
+  
+  
+  @ApiPropertyOptional() 
+  @IsOptional()
+  @IsNumber()
+  totalMin?: number
+  
+  @ApiPropertyOptional() 
+  @IsOptional()
+  @IsNumber()
+  totalMax?: number
+  
+  @ApiPropertyOptional() 
+  @IsOptional()
+  @IsNumber()
+  balanceMin?: number
+  
+  @ApiPropertyOptional() 
+  @IsOptional()
+  @IsNumber()
+  balanceMax?: number
   
   @ApiPropertyOptional() 
   page?: number

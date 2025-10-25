@@ -5,13 +5,18 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 Starting database seeding...')
 
-  // Clean existing data
+  // Clean existing data (in correct order to avoid foreign key constraints)
+  await prisma.customerConsent.deleteMany()
+  await prisma.contract.deleteMany()
+  await prisma.contractTemplate.deleteMany()
   await prisma.posting.deleteMany()
   await prisma.transaction.deleteMany()
   await prisma.account.deleteMany()
   await prisma.agendaEvent.deleteMany()
   await prisma.rental.deleteMany()
   await prisma.order.deleteMany()
+  await prisma.purchaseItem.deleteMany()
+  await prisma.purchase.deleteMany()
   await prisma.product.deleteMany()
   await prisma.customer.deleteMany()
   await prisma.supplier.deleteMany()
@@ -24,10 +29,11 @@ async function main() {
   if (process.env.SEED_FINANCE === 'true') {
     console.log('💰 Creating finance accounts...')
     
-    const accounts = await Promise.all([
+    // Create parent accounts
+    const parentAccounts = await Promise.all([
       prisma.account.create({
         data: {
-          id: 'acc-1',
+          id: 'acc-cash',
           type: 'CASH',
           name: 'Kasa',
           currency: 'TRY',
@@ -36,29 +42,137 @@ async function main() {
       }),
       prisma.account.create({
         data: {
-          id: 'acc-2',
+          id: 'acc-bank',
           type: 'BANK',
-          name: 'Banka 1',
+          name: 'Banka',
           currency: 'TRY',
           isActive: true,
         },
       }),
       prisma.account.create({
         data: {
-          id: 'acc-3',
+          id: 'acc-pos',
           type: 'POS',
-          name: 'POS 1',
+          name: 'POS',
+          currency: 'TRY',
+          isActive: true,
+        },
+      }),
+      prisma.account.create({
+        data: {
+          id: 'acc-credit-card',
+          type: 'CREDIT_CARD',
+          name: 'Kredi Kartı',
           currency: 'TRY',
           isActive: true,
         },
       }),
     ])
 
-    console.log(`✅ Created ${accounts.length} finance accounts`)
+    // Create child accounts for banks
+    const bankChildren = await Promise.all([
+      prisma.account.create({
+        data: {
+          id: 'acc-bank-garanti',
+          type: 'BANK',
+          name: 'Garanti',
+          currency: 'TRY',
+          isActive: true,
+          parentId: 'acc-bank',
+        },
+      }),
+      prisma.account.create({
+        data: {
+          id: 'acc-bank-isbank',
+          type: 'BANK',
+          name: 'İşbankası',
+          currency: 'TRY',
+          isActive: true,
+          parentId: 'acc-bank',
+        },
+      }),
+    ])
+
+    // Create child accounts for credit cards
+    const creditCardChildren = await Promise.all([
+      prisma.account.create({
+        data: {
+          id: 'acc-cc-garanti',
+          type: 'CREDIT_CARD',
+          name: 'Garanti Kredi Kartı',
+          currency: 'TRY',
+          isActive: true,
+          parentId: 'acc-credit-card',
+          creditLimit: 5000000, // 50,000 TL limit
+          usedAmount: 1200000,  // 12,000 TL used
+        },
+      }),
+      prisma.account.create({
+        data: {
+          id: 'acc-cc-isbank',
+          type: 'CREDIT_CARD',
+          name: 'İşbankası Kredi Kartı',
+          currency: 'TRY',
+          isActive: true,
+          parentId: 'acc-credit-card',
+          creditLimit: 3000000, // 30,000 TL limit
+          usedAmount: 800000,   // 8,000 TL used
+        },
+      }),
+      prisma.account.create({
+        data: {
+          id: 'acc-cc-yapikredi',
+          type: 'CREDIT_CARD',
+          name: 'Yapıkredi Kredi Kartı',
+          currency: 'TRY',
+          isActive: true,
+          parentId: 'acc-credit-card',
+          creditLimit: 4000000, // 40,000 TL limit
+          usedAmount: 1500000,  // 15,000 TL used
+        },
+      }),
+      prisma.account.create({
+        data: {
+          id: 'acc-cc-akbank',
+          type: 'CREDIT_CARD',
+          name: 'Akbank Kredi Kartı',
+          currency: 'TRY',
+          isActive: true,
+          parentId: 'acc-credit-card',
+          creditLimit: 2500000, // 25,000 TL limit
+          usedAmount: 500000,   // 5,000 TL used
+        },
+      }),
+    ])
+
+    console.log(`✅ Created ${parentAccounts.length} parent accounts and ${bankChildren.length + creditCardChildren.length} child accounts`)
 
     // Create demo transactions if SEED_FINANCE_DEMO=true
     if (process.env.SEED_FINANCE_DEMO === 'true') {
       console.log('💰 Creating demo finance transactions...')
+      
+      // First create customers and suppliers (if they don't exist)
+      const customer1 = await prisma.customer.upsert({
+        where: { id: 'cust-1' },
+        update: {},
+        create: {
+          id: 'cust-1',
+          name: 'Ayşe Yılmaz',
+          phone: '0532 123 45 67',
+          email: 'ayse@example.com'
+        }
+      })
+      
+      const supplier1 = await prisma.supplier.upsert({
+        where: { id: 'supp-1' },
+        update: {},
+        create: {
+          id: 'supp-1',
+          name: 'Tekstil AŞ',
+          phone: '0212 123 45 67',
+          email: 'info@tekstil.com'
+        }
+      })
       
       // Demo Transaction 1: Tahsilat (Müşteriden Kasa)
       const transaction1 = await prisma.transaction.create({
@@ -74,14 +188,14 @@ async function main() {
           postings: {
             create: [
               {
-                accountId: 'acc-1', // Kasa
+                accountId: 'acc-cash', // Kasa
                 dc: 'DEBIT',
                 amount: 50000,
                 currency: 'TRY',
                 rateToTRY: 1.0,
               },
               {
-                accountId: 'acc-1', // Sanal müşteri alacağı (şimdilik aynı hesap)
+                accountId: 'acc-cash', // Sanal müşteri alacağı (şimdilik aynı hesap)
                 dc: 'CREDIT',
                 amount: 50000,
                 currency: 'TRY',
@@ -106,14 +220,14 @@ async function main() {
           postings: {
             create: [
               {
-                accountId: 'acc-1', // Sanal tedarikçi borcu (şimdilik aynı hesap)
+                accountId: 'acc-cash', // Sanal tedarikçi borcu (şimdilik aynı hesap)
                 dc: 'DEBIT',
                 amount: 25000,
                 currency: 'TRY',
                 rateToTRY: 1.0,
               },
               {
-                accountId: 'acc-2', // Banka
+                accountId: 'acc-bank-garanti', // Banka
                 dc: 'CREDIT',
                 amount: 25000,
                 currency: 'TRY',
@@ -137,14 +251,14 @@ async function main() {
           postings: {
             create: [
               {
-                accountId: 'acc-1', // Kasa
+                accountId: 'acc-cash', // Kasa
                 dc: 'DEBIT',
                 amount: 10000,
                 currency: 'TRY',
                 rateToTRY: 1.0,
               },
               {
-                accountId: 'acc-2', // Banka
+                accountId: 'acc-bank-garanti', // Banka
                 dc: 'CREDIT',
                 amount: 10000,
                 currency: 'TRY',
@@ -755,7 +869,8 @@ async function main() {
       rental: {
         create: {
           id: 'rental-1',
-          productId: 'prod-1', // Smokin
+          productId: 'prod-1',
+// Smokin
           start: new Date('2025-10-20'),
           end: new Date('2025-10-22'),
           organization: 'Düğün Organizasyonu',
@@ -776,7 +891,8 @@ async function main() {
       rental: {
         create: {
           id: 'rental-2',
-          productId: 'prod-2', // Slim Fit
+          productId: 'prod-2',
+// Slim Fit
           start: new Date('2025-10-10'),
           end: new Date('2025-10-12'),
         },
@@ -797,7 +913,8 @@ async function main() {
       rental: {
         create: {
           id: 'rental-3',
-          productId: 'prod-3', // Damat Takımı
+          productId: 'prod-3',
+// Damat Takımı
           start: new Date('2025-11-05'),
           end: new Date('2025-11-07'),
           organization: 'Kaya Holding Etkinliği',
@@ -818,7 +935,7 @@ async function main() {
       rental: {
         create: {
           id: 'rental-4',
-          productId: 'prod-4', // Casual Takım
+ // Casual Takım
           start: new Date('2025-10-25'),
           end: new Date('2025-10-27'),
         },
@@ -839,7 +956,7 @@ async function main() {
       rental: {
         create: {
           id: 'rental-5',
-          productId: 'prod-1', // Smokin (yeniden)
+ // Smokin (yeniden)
           start: new Date('2025-11-10'),
           end: new Date('2025-11-12'),
           organization: 'Arslan Tekstil Gala',
@@ -1115,7 +1232,6 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-1',
-        productId: 'prod-1',
         type: 'ALTERATION',
         start: new Date('2025-10-23'),
         end: new Date('2025-10-24'),
@@ -1125,7 +1241,6 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-2',
-        productId: 'prod-2',
         type: 'ALTERATION',
         start: new Date('2025-10-28'),
         end: new Date('2025-10-29'),
@@ -1135,7 +1250,6 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-3',
-        productId: 'prod-4',
         type: 'ALTERATION',
         start: new Date('2025-11-01'),
         end: new Date('2025-11-02'),
@@ -1147,7 +1261,6 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-4',
-        productId: 'prod-2',
         type: 'DRY_CLEANING',
         start: new Date('2025-10-30'),
         end: new Date('2025-10-31'),
@@ -1157,7 +1270,6 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-5',
-        productId: 'prod-3',
         type: 'DRY_CLEANING',
         start: new Date('2025-11-08'),
         end: new Date('2025-11-09'),
@@ -1167,7 +1279,6 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-6',
-        productId: 'prod-5',
         type: 'DRY_CLEANING',
         start: new Date('2025-10-26'),
         end: new Date('2025-10-27'),
@@ -1179,7 +1290,6 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-7',
-        productId: 'prod-5',
         type: 'OUT_OF_SERVICE',
         start: new Date('2025-10-18'),
         end: new Date('2025-10-25'),
@@ -1189,7 +1299,6 @@ async function main() {
     prisma.agendaEvent.create({
       data: {
         id: 'agenda-8',
-        productId: 'prod-3',
         type: 'OUT_OF_SERVICE',
         start: new Date('2025-11-13'),
         end: new Date('2025-11-15'),
@@ -1201,6 +1310,477 @@ async function main() {
   console.log(`✅ Created ${agendaEvents.length} agenda events`)
 
   // ============================================
+  // 7. CREATE PURCHASES (12)
+  // ============================================
+  const purchases = await Promise.all([
+    // Basit test verileri - Schema'ya uygun
+    prisma.purchase.create({
+      data: {
+        id: 'purchase-1',
+        supplierId: 'supp-1',
+        type: 'STOCK',
+        status: 'ORDERED',
+        paymentStatus: 'UNPAID',
+        date: new Date('2025-10-20'),
+        dueDate: new Date('2025-11-20'),
+        note: 'Kumaş alımı - Smokin takımlar için',
+        subTotal: 500000, // 5,000 TL
+        vatTot: 90000,    // 900 TL
+        total: 590000,    // 5,900 TL
+        paid: 0,
+        items: {
+          create: [
+            {
+              productType: 'PRODUCT',
+              qtyOrdered: 10,
+              qtyReceived: 0,
+              unitPrice: 50000, // 500 TL per unit
+              lineSubTotal: 500000,
+              lineVat: 90000,
+              lineTotal: 590000
+            }
+          ]
+        }
+      }
+    }),
+    prisma.purchase.create({
+      data: {
+        id: 'purchase-2',
+        supplierId: 'supp-2',
+        type: 'EXPENSE',
+        status: 'RECEIVED',
+        paymentStatus: 'PAID',
+        date: new Date('2025-10-18'),
+        dueDate: new Date('2025-10-25'),
+        note: 'Elektrik faturası - Ekim ayı',
+        subTotal: 150000, // 1,500 TL
+        vatTot: 27000,    // 270 TL
+        total: 177000,    // 1,770 TL
+        paid: 177000,
+        items: {
+          create: [
+            {
+              productType: 'SERVICE',
+              qtyOrdered: 1,
+              qtyReceived: 1,
+              unitPrice: 150000,
+              lineSubTotal: 150000,
+              lineVat: 27000,
+              lineTotal: 177000
+            }
+          ]
+        }
+      }
+    }),
+    prisma.purchase.create({
+      data: {
+        id: 'purchase-3',
+        supplierId: 'supp-3',
+        type: 'INVENTORY',
+        status: 'PARTIAL_RECEIVED',
+        paymentStatus: 'PARTIAL',
+        date: new Date('2025-10-15'),
+        dueDate: new Date('2025-11-15'),
+        note: 'Dikiş makinesi yedek parçaları',
+        subTotal: 300000, // 3,000 TL
+        vatTot: 54000,    // 540 TL
+        total: 354000,    // 3,540 TL
+        paid: 177000,     // 1,770 TL (yarısı ödenmiş)
+        items: {
+          create: [
+            {
+              productType: 'PRODUCT',
+              qtyOrdered: 5,
+              qtyReceived: 2,
+              unitPrice: 60000,
+              lineSubTotal: 300000,
+              lineVat: 54000,
+              lineTotal: 354000
+            }
+          ]
+        }
+      }
+    }),
+    prisma.purchase.create({
+      data: {
+        id: 'purchase-4',
+        supplierId: 'supp-1',
+        type: 'STOCK',
+        status: 'DRAFT',
+        paymentStatus: 'UNPAID',
+        date: new Date('2025-10-22'),
+        note: 'Taslak sipariş - iplikler',
+        subTotal: 80000,  // 800 TL
+        vatTot: 14400,    // 144 TL
+        total: 94400,     // 944 TL
+        paid: 0,
+        items: {
+          create: [
+            {
+              productType: 'PRODUCT',
+              qtyOrdered: 20,
+              qtyReceived: 0,
+              unitPrice: 4000,
+              lineSubTotal: 80000,
+              lineVat: 14400,
+              lineTotal: 94400
+            }
+          ]
+        }
+      }
+    }),
+    prisma.purchase.create({
+      data: {
+        id: 'purchase-5',
+        supplierId: 'supp-2',
+        type: 'EXPENSE',
+        status: 'CLOSED',
+        paymentStatus: 'PAID',
+        date: new Date('2025-10-10'),
+        dueDate: new Date('2025-10-20'),
+        note: 'Su faturası',
+        subTotal: 120000, // 1,200 TL
+        vatTot: 21600,    // 216 TL
+        total: 141600,    // 1,416 TL
+        paid: 141600,
+        items: {
+          create: [
+            {
+              productType: 'SERVICE',
+              qtyOrdered: 1,
+              qtyReceived: 1,
+              unitPrice: 120000,
+              lineSubTotal: 120000,
+              lineVat: 21600,
+              lineTotal: 141600
+            }
+          ]
+        }
+      }
+    }),
+    // Basit ek test verileri
+    prisma.purchase.create({
+      data: {
+        id: 'purchase-6',
+        supplierId: 'supp-1',
+        type: 'STOCK',
+        status: 'RECEIVED',
+        paymentStatus: 'UNPAID',
+        date: new Date('2025-10-25'),
+        dueDate: new Date('2025-11-25'),
+        note: 'Yeni sezon kumaşları - Pamuklu',
+        subTotal: 750000, // 7,500 TL
+        vatTot: 135000,   // 1,350 TL
+        chargeTot: 25000, // 250 TL
+        discountTot: 50000, // 500 TL
+        total: 860000,    // 8,600 TL
+        paid: 0,
+        items: {
+          create: [
+            {
+              qtyOrdered: 15,
+              qtyReceived: 15,
+              unitPrice: 50000, // 500 TL per unit
+              lineSubTotal: 750000,
+              lineVat: 135000,
+              lineTotal: 885000
+            }
+          ]
+        }
+      }
+    }),
+    prisma.purchase.create({
+      data: {
+        id: 'purchase-7',
+        supplierId: 'supp-3',
+        type: 'EXPENSE',
+        status: 'PENDING',
+        paymentStatus: 'UNPAID',
+        date: new Date('2025-10-28'),
+        dueDate: new Date('2025-11-15'),
+        note: 'İnternet ve telefon faturası',
+        subTotal: 45000,  // 450 TL
+        vatTot: 8100,     // 81 TL
+        total: 53100,     // 531 TL
+        paid: 0,
+        items: {
+          create: [
+            {
+              qtyOrdered: 1,
+              qtyReceived: 0,
+              unitPrice: 45000,
+              lineSubTotal: 45000,
+              lineVat: 8100,
+              lineTotal: 53100
+            }
+          ]
+        }
+      }
+    }),
+    prisma.purchase.create({
+      data: {
+        id: 'purchase-8',
+        supplierId: 'supp-2',
+        type: 'INVENTORY',
+        status: 'ORDERED',
+        paymentStatus: 'UNPAID',
+        date: new Date('2025-10-30'),
+        dueDate: new Date('2025-12-15'),
+        note: 'Yeni dikiş makineleri - Brother serisi',
+        subTotal: 1200000, // 12,000 TL
+        vatTot: 216000,    // 2,160 TL
+        chargeTot: 50000,  // 500 TL
+        discountTot: 100000, // 1,000 TL
+        total: 1366000,    // 13,660 TL
+        paid: 0,
+        items: {
+          create: [
+            {
+              qtyOrdered: 2,
+              qtyReceived: 0,
+              unitPrice: 600000, // 6,000 TL per unit
+              lineSubTotal: 1200000,
+              lineVat: 216000,
+              lineTotal: 1416000
+            }
+          ]
+        }
+      }
+    }),
+    prisma.purchase.create({
+      data: {
+        id: 'purchase-9',
+        supplierId: 'supp-1',
+        type: 'STOCK',
+        status: 'CANCELLED',
+        paymentStatus: 'UNPAID',
+        date: new Date('2025-10-05'),
+        note: 'İptal edilen sipariş - Kalite sorunu',
+        subTotal: 200000, // 2,000 TL
+        vatTot: 36000,    // 360 TL
+        total: 236000,    // 2,360 TL
+        paid: 0,
+        items: {
+          create: [
+            {
+              qtyOrdered: 50,
+              qtyReceived: 0,
+              unitPrice: 4000,
+              lineSubTotal: 200000,
+              lineVat: 36000,
+              lineTotal: 236000
+            }
+          ]
+        }
+      }
+    }),
+    prisma.purchase.create({
+      data: {
+        id: 'purchase-10',
+        supplierId: 'supp-3',
+        type: 'EXPENSE',
+        status: 'RECEIVED',
+        paymentStatus: 'PARTIAL',
+        date: new Date('2025-10-12'),
+        dueDate: new Date('2025-11-12'),
+        note: 'Kira ödemesi - Ekim ayı',
+        subTotal: 300000, // 3,000 TL
+        vatTot: 0,        // Kira için KDV yok
+        total: 300000,    // 3,000 TL
+        paid: 150000,     // 1,500 TL (yarısı ödenmiş)
+        items: {
+          create: [
+            {
+              qtyOrdered: 1,
+              qtyReceived: 1,
+              unitPrice: 300000,
+              lineSubTotal: 300000,
+              lineVat: 0,
+              lineTotal: 300000
+            }
+          ]
+        }
+      }
+    }),
+    prisma.purchase.create({
+      data: {
+        id: 'purchase-11',
+        supplierId: 'supp-2',
+        type: 'STOCK',
+        status: 'DRAFT',
+        paymentStatus: 'UNPAID',
+        date: new Date('2025-11-01'),
+        note: 'Taslak - Yılbaşı dekorasyon malzemeleri',
+        subTotal: 35000,  // 350 TL
+        vatTot: 6300,     // 63 TL
+        total: 41300,     // 413 TL
+        paid: 0,
+        items: {
+          create: [
+            {
+              qtyOrdered: 7,
+              qtyReceived: 0,
+              unitPrice: 5000, // 50 TL per unit
+              lineSubTotal: 35000,
+              lineVat: 6300,
+              lineTotal: 41300
+            }
+          ]
+        }
+      }
+    }),
+    prisma.purchase.create({
+      data: {
+        id: 'purchase-12',
+        supplierId: 'supp-1',
+        type: 'INVENTORY',
+        status: 'RECEIVED',
+        paymentStatus: 'PAID',
+        date: new Date('2025-09-15'),
+        dueDate: new Date('2025-10-15'),
+        note: 'Eylül ayı temizlik malzemeleri',
+        subTotal: 85000,  // 850 TL
+        vatTot: 15300,    // 153 TL
+        chargeTot: 5000,  // 50 TL
+        total: 105300,    // 1,053 TL
+        paid: 105300,
+        items: {
+          create: [
+            {
+              productType: 'SERVICE',
+              qtyOrdered: 1,
+              qtyReceived: 1,
+              unitPrice: 85000,
+              lineSubTotal: 85000,
+              lineVat: 15300,
+              lineTotal: 100300
+            }
+          ]
+        }
+      }
+    })
+  ])
+
+  console.log(`✅ Created ${purchases.length} purchases`)
+
+  // ============================================
+  // CONTRACT TEMPLATES
+  // ============================================
+  console.log('📄 Creating contract templates...')
+  
+  const contractTemplates = await Promise.all([
+    prisma.contractTemplate.create({
+      data: {
+        name: 'Dikim Sözleşmesi',
+        type: 'DİKİM',
+        version: '1.0',
+        content: `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Dikim Sözleşmesi</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .contract-info { margin-bottom: 20px; }
+        .terms { margin: 20px 0; }
+        .signature { margin-top: 50px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>DİKİM SÖZLEŞMESİ</h1>
+        <p>Sözleşme No: {{contractNumber}}</p>
+    </div>
+    
+    <div class="contract-info">
+        <p><strong>Müşteri:</strong> {{customerName}}</p>
+        <p><strong>Telefon:</strong> {{customerPhone}}</p>
+        <p><strong>Sipariş Tarihi:</strong> {{orderDate}}</p>
+        <p><strong>Teslim Tarihi:</strong> {{deliveryDate}}</p>
+        <p><strong>Toplam Tutar:</strong> {{totalAmount}} TL</p>
+    </div>
+    
+    <div class="terms">
+        <h3>Sözleşme Şartları:</h3>
+        <ol>
+            <li>Dikim işlemi {{deliveryDate}} tarihine kadar tamamlanacaktır.</li>
+            <li>Müşteri ölçüleri doğru verilmiştir ve sorumluluk müşteriye aittir.</li>
+            <li>Değişiklik talepleri teslim tarihinden 3 gün öncesine kadar kabul edilir.</li>
+            <li>Ödeme {{totalAmount}} TL tutarında teslim sırasında yapılacaktır.</li>
+            <li>İptal durumunda %50 ücret kesintisi uygulanır.</li>
+        </ol>
+    </div>
+    
+    <div class="signature">
+        <p>Müşteri Adı Soyadı: _________________</p>
+        <p>İmza: _________________</p>
+        <p>Tarih: _________________</p>
+    </div>
+</body>
+</html>`
+      }
+    }),
+    prisma.contractTemplate.create({
+      data: {
+        name: 'Kiralama Sözleşmesi',
+        type: 'KİRALAMA',
+        version: '1.0',
+        content: `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Kiralama Sözleşmesi</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .contract-info { margin-bottom: 20px; }
+        .terms { margin: 20px 0; }
+        .signature { margin-top: 50px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>KİRALAMA SÖZLEŞMESİ</h1>
+        <p>Sözleşme No: {{contractNumber}}</p>
+    </div>
+    
+    <div class="contract-info">
+        <p><strong>Müşteri:</strong> {{customerName}}</p>
+        <p><strong>Telefon:</strong> {{customerPhone}}</p>
+        <p><strong>Kiralama Tarihi:</strong> {{orderDate}}</p>
+        <p><strong>İade Tarihi:</strong> {{deliveryDate}}</p>
+        <p><strong>Günlük Ücret:</strong> {{dailyRate}} TL</p>
+        <p><strong>Toplam Tutar:</strong> {{totalAmount}} TL</p>
+    </div>
+    
+    <div class="terms">
+        <h3>Sözleşme Şartları:</h3>
+        <ol>
+            <li>Kiralama süresi {{rentalDays}} gündür.</li>
+            <li>Ürün hasarında tamir bedeli müşteriye aittir.</li>
+            <li>Gecikme durumunda günlük {{dailyRate}} TL ek ücret alınır.</li>
+            <li>Ödeme kiralama başlangıcında yapılacaktır.</li>
+            <li>İptal durumunda %25 ücret kesintisi uygulanır.</li>
+        </ol>
+    </div>
+    
+    <div class="signature">
+        <p>Müşteri Adı Soyadı: _________________</p>
+        <p>İmza: _________________</p>
+        <p>Tarih: _________________</p>
+    </div>
+</body>
+</html>`
+      }
+    })
+  ])
+
+  console.log(`✅ Created ${contractTemplates.length} contract templates`)
+
+  // ============================================
   // SUMMARY
   // ============================================
   console.log('\n🎉 Database seeding completed successfully!')
@@ -1210,11 +1790,13 @@ async function main() {
   console.log(`   - ${products.length} Products`)
   console.log(`   - 10 TAILORING Orders`)
   console.log(`   - 5 RENTAL Orders (with rentals)`)
+  console.log(`   - ${contractTemplates.length} Contract Templates`)
   console.log(`   - ${stockCards.length} Stock Cards (5 different items)`)
   console.log(`   - ${stockMovements.length} Stock Movements (5 IN, 5 OUT)`)
   console.log(`   - ${agendaEvents.length} Agenda Events (3 Alteration, 3 Dry Cleaning, 2 Out of Service)`)
+  console.log(`   - ${purchases.length} Purchases (5 Stock, 4 Expense, 3 Inventory)`)
   if (process.env.SEED_FINANCE === 'true') {
-    console.log(`   - 3 Finance Accounts (Kasa, Banka, POS)`)
+    console.log(`   - 5 Finance Accounts (Kasa, Banka, POS, Tedarikçi POS, Kredi Kartı)`)
     if (process.env.SEED_FINANCE_DEMO === 'true') {
       console.log(`   - 3 Demo Finance Transactions (Tahsilat, Ödeme, Virman)`)
     }

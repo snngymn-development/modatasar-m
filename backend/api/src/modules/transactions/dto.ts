@@ -33,6 +33,16 @@ export class FindTransactionsDto {
   @IsString()
   status?: string
 
+  @ApiProperty({
+    required: false,
+    enum: ['PENDING', 'SENT', 'SIGNED', 'APPROVED', 'EXPIRED', 'CANCELLED'],
+    description: 'Filter by contract status',
+    example: 'PENDING',
+  })
+  @IsOptional()
+  @IsString()
+  contractStatus?: string
+
   @ApiProperty({ required: false, default: 1, description: 'Page number' })
   @IsOptional()
   @Type(() => Number)

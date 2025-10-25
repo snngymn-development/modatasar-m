@@ -14,6 +14,7 @@ export class TransactionsService {
       customerId: query.customerId,
       organization: query.organization,
       status: query.status ? { in: [].concat(query.status as any) } : undefined,
+      contractStatus: query.contractStatus ? { in: [].concat(query.contractStatus as any) } : undefined,
     }
 
     // Fetch orders with rental JOIN
@@ -51,6 +52,12 @@ export class TransactionsService {
       balance: o.total - o.collected,
       status: o.status,
       stage: o.stage,
+      contractStatus: o.contractStatus,
+      contractId: o.contractId,
+      contractVersion: o.contractVersion,
+      contractCreatedAt: o.contractCreatedAt?.toISOString() || null,
+      contractSignedAt: o.contractSignedAt?.toISOString() || null,
+      contractApprovedAt: o.contractApprovedAt?.toISOString() || null,
     }))
 
     // Count total for pagination

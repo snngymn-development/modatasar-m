@@ -47,6 +47,15 @@ export class FinanceController {
     return this.financeService.createAccount(dto)
   }
 
+  @Put('accounts/:id')
+  @ApiOperation({ summary: 'Update account' })
+  @ApiParam({ name: 'id', description: 'Account ID' })
+  @ApiResponse({ status: 200, description: 'Account updated successfully' })
+  @ApiResponse({ status: 404, description: 'Account not found' })
+  async updateAccount(@Param('id') id: string, @Body() dto: CreateAccountDto) {
+    return this.financeService.updateAccount(id, dto)
+  }
+
   // ============================================
   // TRANSACTION ENDPOINTS
   // ============================================

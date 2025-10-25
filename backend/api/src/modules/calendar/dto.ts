@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsString, IsOptional, IsEnum, IsDateString, IsArray, IsNumber, Min, Max } from 'class-validator'
+import { Transform } from 'class-transformer'
 // Event types and statuses
 export const EventType = {
   APPOINTMENT: 'APPOINTMENT',
@@ -144,6 +145,11 @@ export class CalendarFilterDto {
     type: [String],
     enum: EventType
   })
+  @Transform(({ value }) => {
+    if (Array.isArray(value)) return value
+    if (typeof value === 'string') return [value]
+    return value
+  })
   @IsArray()
   @IsEnum(EventType, { each: true })
   @IsOptional()
@@ -170,12 +176,14 @@ export class CalendarFilterDto {
   query?: string
 
   @ApiPropertyOptional({ description: 'Page number', minimum: 1 })
+  @Transform(({ value }) => parseInt(value, 10))
   @IsNumber()
   @Min(1)
   @IsOptional()
   page?: number = 1
 
   @ApiPropertyOptional({ description: 'Page size', minimum: 1, maximum: 100 })
+  @Transform(({ value }) => parseInt(value, 10))
   @IsNumber()
   @Min(1)
   @Max(100)

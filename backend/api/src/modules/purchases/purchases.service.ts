@@ -7,38 +7,27 @@ export class PurchasesService {
   constructor(private prisma: PrismaService) {}
 
   async list(q: ListQueryDto) {
-    const page = Math.max(1, Number(q.page || 1))
-    const limit = Math.min(100, Number(q.limit || 25))
-    const where: any = {}
-
-    if (q.q) {
-      where.OR = [
-        { code: { contains: q.q, mode: 'insensitive' } },
-        { note: { contains: q.q, mode: 'insensitive' } },
-        { supplier: { name: { contains: q.q, mode: 'insensitive' } } },
-      ]
-    }
-    if (q.supplierId) where.supplierId = q.supplierId
-    if (q.type) where.type = q.type
-    if (q.status) where.status = q.status
-    if (q.paymentStatus) where.paymentStatus = q.paymentStatus
-    if (q.dateFrom || q.dateTo) {
-      where.date = {}
-      if (q.dateFrom) where.date.gte = new Date(q.dateFrom)
-      if (q.dateTo) where.date.lte = new Date(q.dateTo)
-    }
-
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.purchase.findMany({
-        where, 
+    try {
+      const page = Math.max(1, Number(q.page || 1))
+      const limit = Math.min(100, Number(q.limit || 25))
+      
+      // Basit sorgu - sadece temel alanlar
+      const rows = await this.prisma.purchase.findMany({
         orderBy: { date: 'desc' }, 
         skip: (page-1)*limit, 
         take: limit,
-        include: { supplier: true },
-      }),
-      this.prisma.purchase.count({ where }),
-    ])
-    return { rows, total, page, limit }
+        include: { 
+          supplier: true
+        },
+      })
+      
+      const total = await this.prisma.purchase.count()
+      
+      return { rows, total, page, limit }
+    } catch (error) {
+      console.error('Error in purchases list:', error)
+      throw error
+    }
   }
 
   async create(dto: CreatePurchaseDto) {
@@ -76,8 +65,23 @@ export class PurchasesService {
   async recalc(id: string) {
     const p = await this.get(id)
     
-    // Geçici olarak basit hesaplama (core import sorunu için)
-    // const { calculatePurchaseTotals } = await import('@deneme1/core/utils/purchase-calculator')
+    // Basit hesaplama
+    const items = p.items.map(item => {
+      const subTotal = item.qtyOrdered * item.unitPrice
+      const vat = Math.round(subTotal * ((item.vatRate || 20) / 100))
+      const total = subTotal + vat
+      
+      return {
+        ...item,
+        lineSubTotal: subTotal,
+        lineVat: vat,
+        lineTotal: total
+      }
+    })
+    
+    const subTotal = items.reduce((sum, item) => sum + item.lineSubTotal, 0)
+    const vatTotal = items.reduce((sum, item) => sum + item.lineVat, 0)
+    const total = subTotal + vatTotal
     
     const calculationInput = {
       items: p.items.map(item => ({
@@ -85,6 +89,7 @@ export class PurchasesService {
         qtyOrdered: item.qtyOrdered,
         qtyReceived: item.qtyReceived,
         unitPrice: item.unitPrice,
+        vatRate: item.vatRate || 20,
         lineDiscountTot: item.lineDiscountTot,
         lineChargeTot: item.lineChargeTot,
         lineSubTotal: item.lineSubTotal,
@@ -106,20 +111,26 @@ export class PurchasesService {
       vatRate: p.vatRate
     }
     
+    // Items'ları güncelle
+    for (const item of items) {
+      await this.prisma.purchaseItem.update({
+        where: { id: item.id },
+        data: {
+          lineSubTotal: item.lineSubTotal,
+          lineVat: item.lineVat,
+          lineTotal: item.lineTotal
+        }
+      })
+    }
+    
     // Basit hesaplama (geçici)
     const result = {
-      lineCalculations: p.items.map(item => ({
-        itemId: item.id,
-        lineSubTotal: item.qtyOrdered * item.unitPrice,
-        lineVat: Math.round(item.qtyOrdered * item.unitPrice * p.vatRate),
-        lineTotal: item.qtyOrdered * item.unitPrice + Math.round(item.qtyOrdered * item.unitPrice * p.vatRate)
-      })),
-      subTotal: p.items.reduce((sum, item) => sum + item.qtyOrdered * item.unitPrice, 0),
+      subTotal: subTotal,
       discountTot: p.headerDiscounts.reduce((sum, d) => sum + d.amount, 0),
       chargeTot: p.headerCharges.reduce((sum, c) => sum + c.amount, 0),
-      vatTot: Math.round(p.items.reduce((sum, item) => sum + item.qtyOrdered * item.unitPrice, 0) * p.vatRate),
+      vatTot: vatTotal,
       roundingAdj: 0,
-      total: p.items.reduce((sum, item) => sum + item.qtyOrdered * item.unitPrice, 0) + Math.round(p.items.reduce((sum, item) => sum + item.qtyOrdered * item.unitPrice, 0) * p.vatRate)
+      total: total
     }
     
     // Update purchase totals
@@ -135,17 +146,7 @@ export class PurchasesService {
       }
     })
     
-    // Update line items
-    for (const lineCalc of result.lineCalculations) {
-      await this.prisma.purchaseItem.update({
-        where: { id: lineCalc.itemId },
-        data: {
-          lineSubTotal: lineCalc.lineSubTotal,
-          lineVat: lineCalc.lineVat,
-          lineTotal: lineCalc.lineTotal
-        }
-      })
-    }
+    // Line items already updated above
     
     return updatedPurchase
   }

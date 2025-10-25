@@ -3,8 +3,8 @@ import { IsString, IsNumber, IsOptional, IsEnum, IsArray, ValidateNested, Min } 
 import { Type } from 'class-transformer'
 
 export class CreateAccountDto {
-  @ApiProperty({ enum: ['CASH', 'BANK', 'POS'] })
-  @IsEnum(['CASH', 'BANK', 'POS'])
+  @ApiProperty({ enum: ['CASH', 'BANK', 'POS', 'CREDIT_CARD'] })
+  @IsEnum(['CASH', 'BANK', 'POS', 'CREDIT_CARD'])
   type: string
 
   @ApiProperty()
@@ -19,6 +19,21 @@ export class CreateAccountDto {
   @ApiProperty({ default: true })
   @IsOptional()
   isActive?: boolean = true
+
+  @ApiProperty({ required: false, description: 'IBAN for bank accounts' })
+  @IsString()
+  @IsOptional()
+  iban?: string
+
+  @ApiProperty({ required: false, description: 'Credit limit in cents for credit cards' })
+  @IsNumber()
+  @IsOptional()
+  creditLimit?: number
+
+  @ApiProperty({ required: false, description: 'Used amount in cents for credit cards' })
+  @IsNumber()
+  @IsOptional()
+  usedAmount?: number = 0
 }
 
 export class CreatePostingDto {
@@ -126,11 +141,13 @@ export class TransactionQueryDto {
   q?: string
 
   @ApiProperty({ required: false, default: 1 })
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   page?: number = 1
 
   @ApiProperty({ required: false, default: 20 })
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   limit?: number = 20

@@ -23,6 +23,8 @@ model Customer {
   updatedAt      DateTime  @updatedAt
   orders         Order[]
   bodyMeasurements CustomerBodyMeasurements[]
+  transactions   Transaction[]
+  consents       CustomerConsent[]
 }
 
 model Supplier {
@@ -37,6 +39,7 @@ model Supplier {
   updatedAt  DateTime    @updatedAt
   purchases  Purchase[]
   stockCards StockCard[]
+  transactions Transaction[]
 }
 
 model Product {
@@ -64,12 +67,20 @@ model Order {
   collected    Int
   status       String
   stage        String?
+  // Contract fields
+  contractStatus     String?   // PENDING, SENT, SIGNED, APPROVED, EXPIRED, CANCELLED
+  contractId         String?   // Sözleşme ID'si
+  contractVersion    String?   // Sözleşme versiyonu
+  contractCreatedAt  DateTime? // Sözleşme oluşturma tarihi
+  contractSignedAt   DateTime? // İmzalama tarihi
+  contractApprovedAt DateTime? // Onay tarihi
   createdAt    DateTime  @default(now())
   customer     Customer  @relation(fields: [customerId], references: [id])
   rental       Rental?
   details      OrderDetail[]
   fittings     OrderFitting[]
   statusHistory OrderStatus[]
+  contract     Contract?
 }
 
 model Rental {
@@ -121,6 +132,7 @@ model Purchase {
   id              String             @id @default(cuid())
   code            String?            @unique
   date            DateTime           @default(now())
+  dueDate         DateTime?
   supplierId      String
   type            String
   status          String             @default("DRAFT")
@@ -149,10 +161,15 @@ model PurchaseItem {
   id              String             @id @default(cuid())
   purchaseId      String
   productId       String?
+  productType     String             @default("PRODUCT") // PRODUCT or SERVICE
+  category        String?
+  color           String?
+  property        String?
   description     String?
   qtyOrdered      Int
   qtyReceived     Int                @default(0)
   unitPrice       Int
+  vatRate         Float              @default(20.0)
   lineDiscountTot Int                @default(0)
   lineChargeTot   Int                @default(0)
   lineSubTotal    Int                @default(0)
@@ -257,17 +274,26 @@ model StockMovement {
 }
 
 model Account {
-  id        String    @id @default(cuid())
-  type      String
-  name      String
-  currency  String    @default("TRY")
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  postings  Posting[]
+  id          String    @id @default(cuid())
+  type        String    // CASH, BANK, POS, SUPPLIER_POS, CREDIT_CARD
+  name        String
+  currency    String    @default("TRY")
+  isActive    Boolean   @default(true)
+  parentId    String?   // For hierarchical structure
+  parent      Account?  @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children    Account[] @relation("AccountHierarchy")
+  // Bank specific fields
+  iban        String?   // IBAN for bank accounts
+  // Credit card specific fields
+  creditLimit Int?      // Total credit limit in cents
+  usedAmount  Int       @default(0) // Used amount in cents
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  postings    Posting[]
 
   @@unique([name, type])
   @@index([type, isActive])
+  @@index([parentId])
 }
 
 model Transaction {
@@ -284,6 +310,10 @@ model Transaction {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   postings   Posting[]
+  
+  // Relations
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
 
   @@index([date, kind])
   @@index([customerId])
@@ -524,4 +554,60 @@ model CustomerBodyMeasurements {
   customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@index([customerId, measuredAt])
+}
+
+// Contract System Models
+model ContractTemplate {
+  id          String   @id @default(cuid())
+  name        String   // "Dikim Sözleşmesi", "Kiralama Sözleşmesi"
+  type        String   // "DİKİM", "KİRALAMA", "GENEL"
+  content     String   // HTML template içeriği
+  version     String   // "1.0", "1.1", "2.0"
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  contracts   Contract[]
+
+  @@index([type, isActive])
+  @@index([version])
+}
+
+model Contract {
+  id              String   @id @default(cuid())
+  orderId         String   @unique
+  templateId      String
+  contractNumber  String   @unique // GGAAYY-D001 formatı
+  status          String   // PENDING, SENT, SIGNED, APPROVED, EXPIRED, CANCELLED
+  content         String   // Final sözleşme içeriği (placeholder'lar değiştirilmiş)
+  pdfUrl          String?  // PDF dosya yolu
+  signedAt        DateTime?
+  approvedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  template        ContractTemplate @relation(fields: [templateId], references: [id])
+  consents        CustomerConsent[]
+
+  @@index([orderId])
+  @@index([contractNumber])
+  @@index([status])
+  @@index([templateId])
+}
+
+model CustomerConsent {
+  id          String   @id @default(cuid())
+  customerId  String
+  contractId  String?
+  type        String   // GENERAL, MARKETING, ORDER_CONTRACT
+  status      String   // PENDING, SIGNED, REJECTED, EXPIRED
+  signedAt    DateTime?
+  createdAt   DateTime @default(now())
+  
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  contract    Contract? @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([contractId])
+  @@index([type])
 }
